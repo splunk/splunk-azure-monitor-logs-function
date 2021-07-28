@@ -7,11 +7,11 @@ import azure.functions as func
 # The maximum size of the payload we can send to the Splunk HEC endpoint
 SPLUNK_BATCH_MAX_SIZE_BYTES = 5 * 1024 * 1024
 
-def main(events: List[func.EventHubEvent], failed_events_output_blob: func.Out[bytes]):
+def main(events: List[func.EventHubEvent], failedEventsOutputBlob: func.Out[bytes]):
     """Entrypoint for function that handles a list of events.
 
     :param events: the events being processed
-    :param failed_events_output_blob: the blob where failed to deliver events should be saved
+    :param failedEventsOutputBlob: the blob where failed to deliver events should be saved
     """
 
     hec_endpoint = os.environ.get("HecEndpoint")
@@ -26,10 +26,10 @@ def main(events: List[func.EventHubEvent], failed_events_output_blob: func.Out[b
     * Convert each event to Splunk Event, set region, source and sourcetype
     * Build ceil(size(events)/SPLUNK_BATCH_MAX_SIZE_BYTES) batches of size SPLUNK_BATCH_MAX_SIZE_BYTES with 1 per line to send to Splunk
     * Send batches to splunk
-    * if any batch fails, write to failed_events_output_blob
+    * if any batch fails, write to failedEventsOutputBlob
     """
     for event in events:
-        failed_events_output_blob.set(event.get_body())
+        failedEventsOutputBlob.set(event.get_body())
         logging.info('Python EventHub trigger processed an event: %s',
                      event.get_body().decode('utf-8'))
     return 1
