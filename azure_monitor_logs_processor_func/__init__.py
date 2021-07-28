@@ -14,9 +14,9 @@ def main(events: List[func.EventHubEvent], failed_events_output_blob: func.Out[b
     :param failed_events_output_blob: the blob where failed to deliver events should be saved
     """
 
-    hec_endpoint = os.environ("HecEndpoint")
-    source_type = os.environ("SourceType")
-    region = os.environ("Region")
+    hec_endpoint = os.environ.get("HecEndpoint")
+    source_type = os.environ.get("SourceType")
+    region = os.environ.get("Region")
 
     logging.info('Invoked with HecEndpoint=%s, SourceType=%s, Region=%s', hec_endpoint, source_type, region)
 
