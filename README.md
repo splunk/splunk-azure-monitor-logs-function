@@ -28,7 +28,7 @@ surrounding them with a `%`. For example, `%EventHubConnection%`.
     "AzureWebJobsStorage": "",
     "FailedEventsStorageConnection": "",
     "EventHubConnection":"",
-    "HecEndpoint": "",
+    "HecUrl": "",
     "SourceType": "",
     "Region":"",
     "ConsumerGroupName": "",
@@ -45,7 +45,8 @@ FailedEventsStorageConnection
 - **EventHubConnection** Connection string to the EventHub *namespace* to read from. 
   [Azure Function trigger for EvenHubs configuration docs](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-event-hubs-trigger?tabs=python#configuration). 
   [EventHub docs](https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-get-connection-string).
-- **HecEndpoint** The HEC endpoint to where events should be sent. ex `http://localhost:8088/services/collector/event`
+- **HecUrl** The HEC URL to where events should be sent, ex. `https://http-inputs-tenant-name.env.splunkcloud.com:443`. See [Splunk HEC documentation](https://docs.splunk.com/Documentation/Splunk/8.2.1/Data/UsetheHTTPEventCollector) for details. Do not include `/<endpoint>` since the function needs to specify it. Equivalent to the `Splunk HEC URL` parameter in [Splunk Dataflow template](https://cloud.google.com/blog/products/data-analytics/connect-to-splunk-with-a-dataflow-template). 
+- **HecToken** The HEC Token associated with `HecUrl`, ex. `X99XXXXX-111X-222X-X333-XX789X789X789X`.  
 - **SourceType** The `sourcetype` this function will set on each ingested log and used to build the path of the file 
   containing failed to deliver logs, ex. `azure:aad`, `azure:activity`, or `azure:resource`
 - **Region** The region this function will set on each ingested log and used for path of failed to deliver logs, ex. 

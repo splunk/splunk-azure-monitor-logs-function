@@ -1,0 +1,77 @@
+"""Copyright (c) 2021 Splunk, Inc. All rights reserved."""
+import unittest
+
+import json
+from typing import List
+from typing import Dict
+
+import azure.functions as func
+from azure_monitor_logs_processor_func import main
+
+
+class BaseAzureFunctionTestCase(unittest.TestCase):
+    """Base class for common test workflows."""
+
+    def test_logs_to_eventhub_events(self):
+        log_lists = [
+            [
+                {
+                    'time': '1',
+                },
+                {
+                    'time': 2,
+                },
+            ],
+            [
+                {
+                    'time': '3',
+                },
+                {
+                    # After serialized to json, single/double quote shouldn't matter.
+                    "time": "4",
+                },
+            ],
+        ]
+
+        events = self.logs_to_eventhub_events(log_lists)
+
+        self.assertEqual(len(events), 2)
+        body0 = events[0].get_body().decode('utf-8')
+        expected0 = '{"records":[{"time":"1"},{"time":2}]}'
+        self.assertEqual(body0, expected0)
+        body1 = events[1].get_body().decode('utf-8')
+        expected1 = '{"records":[{"time":"3"},{"time":"4"}]}'
+        self.assertEqual(body1, expected1)
+
+    @staticmethod
+    def logs_to_eventhub_events(log_lists: List[List[Dict]]):
+        """Convert json logs as a 2D list to a list of Eventhub events that can be used as input to
+        Azure function.
+
+        A helper for developers to specify test payload as python native data structures rather than
+        plain text.
+        """
+        events = []
+        for log_list in log_lists:
+            event = {
+                'records': log_list,
+            }
+            event = json.dumps(event, separators=(',', ':'))
+            event = str.encode(event)
+            event = func.EventHubEvent(body=event)
+            events.append(event)
+
+        return events
+
+    def run_func(self, log_lists: List[List[Dict]], blob_store: func.Out[bytes]):
+        """Run Azure function with Eventhub events constructed from log_lists."""
+        events = self.logs_to_eventhub_events(log_lists)
+        main(events, blob_store)
+
+
+class MockBlobStore(func.Out):
+    def set(self, val: bytes) -> None:
+        pass
+
+    def get(self) -> bytes:
+        pass
