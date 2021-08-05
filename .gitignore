@@ -48,3 +48,5 @@ __pycache__/
 
 # Intellij
 .idea/
+
+/azure_monitor_logs_processor_func/host.json
