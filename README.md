@@ -68,6 +68,17 @@ From project root:
 > python -m pytest tests
 ```
 
+### Deploy
+See [documentation](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=windows%2Ccsharp%2Cportal%2Cbash%2Ckeda#publish). 
+
+Make sure to set up environment variables before the first push or when they change with one the options:
+- include `--publish-local-settings` in the push command
+
+OR
+
+- set `local.settings.json` values in "Settings->Configuration->Application settings" of the Function App in portal
+
+
 ## How this project was created
 ```bash
 > func init azure_monitor_logs_processor_func --python
