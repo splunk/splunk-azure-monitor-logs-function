@@ -7,11 +7,7 @@ from typing import Dict
 from typing import List
 
 import azure.functions as func
-import pandas as pd
 import requests
-
-
-INVALID_TIMESTAMP = -1
 
 
 def main(events: List[func.EventHubEvent], failedEventsOutputBlob: func.Out[bytes]):  # pylint: disable=invalid-name
@@ -63,16 +59,11 @@ def push_to_hec(url: str, headers: Dict, payload: str) -> None:
 
 
 def to_splunk_event(log: Dict) -> Dict:
-    output = {
+    return {
         'event': log,
         'source': get_source(),
         'sourcetype': os.environ["SourceType"],
     }
-    timestamp = extract_timestamp(log)
-    if timestamp >= 0:
-        output['time'] = timestamp
-
-    return output
 
 
 def get_source() -> str:
@@ -84,21 +75,6 @@ def get_source() -> str:
     eventhub_name = os.environ["EventHubName"]
 
     return 'azure:%s:%s:%s' % (region, eventhub_namespace, eventhub_name)
-
-
-def extract_timestamp(log: Dict) -> int:
-    time_str = log.get('Time')
-    if not time_str:
-        logging.debug('no time field:%s', log)
-        return INVALID_TIMESTAMP
-
-    try:
-        timestamp = pd.to_datetime(time_str).value
-    except Exception:  # pylint: disable=broad-except
-        logging.debug('unable to parse timestamp:%s', time_str)
-        return INVALID_TIMESTAMP
-
-    return timestamp
 
 
 def handle_prepush_exception(exception: Exception, events: List[func.EventHubEvent],  # pylint: disable=invalid-name
