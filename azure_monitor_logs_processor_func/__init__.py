@@ -9,6 +9,9 @@ from typing import List
 import azure.functions as func
 import requests
 
+# The maximum size of the payload to send to the Splunk HEC endpoint
+SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000
+
 
 def main(events: List[func.EventHubEvent], failedEventsOutputBlob: func.Out[bytes]):  # pylint: disable=invalid-name
     """Entrypoint for function that handles a list of events.
@@ -36,19 +39,38 @@ def main(events: List[func.EventHubEvent], failedEventsOutputBlob: func.Out[byte
 
 
 def build_payloads(events: List[func.EventHubEvent]) -> List[str]:
-    payloads = []
+    splunk_events = to_splunk_events(events)
+    serialized_splunk_events = [json.dumps(event, separators=(',', ':')) for event in splunk_events]
+    return batch_events(serialized_splunk_events)
+
+
+def to_splunk_events(events: List[func.EventHubEvent]) -> List[dict]:
+    splunk_events = []
     for event in events:
-        payload = ''
         event_body = event.get_body()
-        logging.debug('processing event:%s', event_body)
+        logging.debug('mapping to splunk event: %s', event_body)
         event_json = json.loads(event_body)
         logs = event_json.get('records')
         for log in logs:
-            splunk_event = to_splunk_event(log)
-            payload += json.dumps(splunk_event, separators=(',', ':'))
-        payloads.append(payload)
+            splunk_events.append(to_splunk_event(log))
 
-    return payloads
+    return splunk_events
+
+
+def batch_events(splunk_events: List[str]) -> List[str]:
+    if not splunk_events:
+        return []
+
+    batches = ['']
+    for splunk_event_json in splunk_events:
+        current_batch = batches[-1]
+        potential_size = len(splunk_event_json) + len(current_batch)
+        if not current_batch or potential_size <= SPLUNK_BATCH_MAX_SIZE_BYTES:
+            batches[-1] = current_batch + splunk_event_json
+        else:
+            batches.append(splunk_event_json)
+
+    return batches
 
 
 def push_to_hec(url: str, headers: Dict, payload: str) -> None:
@@ -78,7 +100,7 @@ def get_source() -> str:
 
 
 def handle_prepush_exception(exception: Exception, events: List[func.EventHubEvent],  # pylint: disable=invalid-name
-                            failedEventsOutputBlob: func.Out[bytes]) -> None:
+                             failedEventsOutputBlob: func.Out[bytes]) -> None:
     """to be implemented; current only a stub"""
     stub_backup_msg = b'prepush exception; need to save all events'
     # Save all original events payloads are not ready yet.

@@ -43,18 +43,19 @@ class TestAzureFunction(BaseAzureFunctionTestCase):
         post.assert_called_once_with(url=expected_url, headers=expected_headers, data=expected_data)
 
     @patch('requests.post')
-    def test_batch_by_event(self, post):
+    @patch('azure_monitor_logs_processor_func.SPLUNK_BATCH_MAX_SIZE_BYTES', 240)
+    def test_batching(self, post):
         post.return_value = MOCK_GOOD_RESPONSE
         log_lists = [
             [
                 {
                     'Foo': 'from_msg1',
                 },
-                {
-                    'Foo': 'from_msg1',
-                },
             ],
             [
+                {
+                    'Foo': 'from_msg2',
+                },
                 {
                     'Foo': 'from_msg2',
                 },
@@ -72,7 +73,7 @@ class TestAzureFunction(BaseAzureFunctionTestCase):
         expected_data1 = '{"event":{"Foo":"from_msg1"},' \
                          '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",' \
                          '"sourcetype":"mock_sourcetype"}' \
-                         '{"event":{"Foo":"from_msg1"},' \
+                         '{"event":{"Foo":"from_msg2"},' \
                          '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",' \
                          '"sourcetype":"mock_sourcetype"}'
         expected_data2 = '{"event":{"Foo":"from_msg2"},' \
