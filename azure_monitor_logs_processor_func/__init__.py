@@ -13,7 +13,9 @@ import requests
 SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000
 
 
-def main(events: List[func.EventHubEvent], failedEventsOutputBlob: func.Out[bytes]):  # pylint: disable=invalid-name
+def main(events: List[func.EventHubEvent],  # pylint: disable=invalid-name
+         failedParseEventsOutputBlob: func.Out[bytes],
+         failedSendEventsOutputBlob: func.Out[bytes]):
     """Entrypoint for function that handles a list of events.
 
     :param events: the events being processed. Each event contains an Eventhub message. Each message
@@ -28,14 +30,18 @@ def main(events: List[func.EventHubEvent], failedEventsOutputBlob: func.Out[byte
         }
         payloads = build_payloads(events)
     except Exception as err:  # pylint: disable=broad-except
-        handle_prepush_exception(err, events, failedEventsOutputBlob)
+        handle_prepush_exception(err, events, failedParseEventsOutputBlob)
         return
 
+    failed_payloads = []
     for payload in payloads:
         try:
             push_to_hec(url, headers, payload)
         except Exception as err:  # pylint: disable=broad-except
-            handle_push_exception(err, url, headers, payload, failedEventsOutputBlob)
+            logging.error('Failed to push to HEC. err:%s \npayload:%s', err, payload)
+            failed_payloads.append(payload)
+
+    handle_push_exceptions(failed_payloads, failedSendEventsOutputBlob)
 
 
 def build_payloads(events: List[func.EventHubEvent]) -> List[str]:
@@ -99,18 +105,21 @@ def get_source() -> str:
     return 'azure:%s:%s:%s' % (region, eventhub_namespace, eventhub_name)
 
 
-def handle_prepush_exception(exception: Exception, events: List[func.EventHubEvent],  # pylint: disable=invalid-name
-                             failedEventsOutputBlob: func.Out[bytes]) -> None:
-    """to be implemented; current only a stub"""
-    stub_backup_msg = b'prepush exception; need to save all events'
-    # Save all original events payloads are not ready yet.
-    failedEventsOutputBlob.set(stub_backup_msg)
-    logging.error('%s%s', exception, events)
+def handle_prepush_exception(exception: Exception,
+                             events: List[func.EventHubEvent],
+                             output_blob: func.Out[bytes]) -> None:
+    logging.error('Failed before pushing events. err: %s events: %s', exception, events)
+    event_body_list = []
+    for event in events:
+        event_body = event.get_body()
+        event_body_list.append(event_body)
+
+    event_body_output = b'%s' % (b'\n'.join(event_body_list))
+    output_blob.set(event_body_output)
 
 
-def handle_push_exception(exception: Exception, url: str, headers: Dict, payload: str,  # pylint: disable=invalid-name
-                          failedEventsOutputBlob: func.Out[bytes]) -> None:
-    """to be implemented; current only a stub"""
-    stub_backup_msg = b'push exception; need to save current payload and request/response info'
-    failedEventsOutputBlob.set(stub_backup_msg)
-    logging.error('%s%s%s%s', exception, url, headers, payload)
+def handle_push_exceptions(failed_requests: list, output_blob: func.Out[bytes]) -> None:
+    if not failed_requests:
+        return
+    output_string = '\n'.join(failed_requests)
+    output_blob.set(output_string)

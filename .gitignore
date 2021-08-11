@@ -50,3 +50,7 @@ __pycache__/
 .idea/
 
 /azure_monitor_logs_processor_func/host.json
+
+# Coverage
+.coverage
+coverage.xml

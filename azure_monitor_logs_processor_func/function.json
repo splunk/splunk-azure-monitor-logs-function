@@ -12,9 +12,16 @@
       "dataType": "binary"
     },
     {
-      "name": "failedEventsOutputBlob",
+      "name": "failedParseEventsOutputBlob",
       "type": "blob",
-      "path": "splunk-failed-%SourceType%-logs/{DateTime:yyyy}/{DateTime:MM}/{DateTime:dd}/{DateTime:hh}/splunk-failed-%SourceType%-%Region%-logs-{DateTime:yyyy}-{DateTime:MM}-{DateTime:dd}-{DateTime:hh}].log",
+      "path": "splunk-failed-%SourceType%-logs/{DateTime:yyyy}/{DateTime:MM}/{DateTime:dd}/{DateTime:hh}/splunk-%SourceType%-%Region%-logs-failed-to-parse-{DateTime:yyyy}-{DateTime:MM}-{DateTime:dd}-{DateTime:hh}-{rand-guid}.log",
+      "connection": "FailedEventsStorageConnection",
+      "direction": "out"
+    },
+    {
+      "name": "failedSendEventsOutputBlob",
+      "type": "blob",
+      "path": "splunk-failed-%SourceType%-logs/{DateTime:yyyy}/{DateTime:MM}/{DateTime:dd}/{DateTime:hh}/splunk-%SourceType%-%Region%-logs-failed-to-send-{DateTime:yyyy}-{DateTime:MM}-{DateTime:dd}-{DateTime:hh}-{rand-guid}.log",
       "connection": "FailedEventsStorageConnection",
       "direction": "out"
     }

@@ -19,5 +19,11 @@ test:
     - pip install -r requirements.txt
     - pip install pytest
     - pip install pylint
-    - python -m pytest tests
+    - pip install coverage
+    - coverage run -m pytest tests
+    - coverage report
+    - coverage xml
     - pylint **/*.py
+  artifacts:
+    reports:
+      cobertura: coverage.xml

@@ -2,8 +2,7 @@
 import unittest
 
 import json
-from typing import List
-from typing import Dict
+from typing import Dict, List, Union
 
 import azure.functions as func
 from azure_monitor_logs_processor_func import main
@@ -63,14 +62,16 @@ class BaseAzureFunctionTestCase(unittest.TestCase):
 
         return events
 
-    def run_func(self, log_lists: List[List[Dict]], blob_store: func.Out[bytes]):
+    def run_func(self, log_lists: List[List[Dict]],
+                 failed_parse_events_output_blob: func.Out[bytes],
+                 failed_send_events_output_blob: func.Out[bytes]):
         """Run Azure function with Eventhub events constructed from log_lists."""
         events = self.logs_to_eventhub_events(log_lists)
-        main(events, blob_store)
+        main(events, failed_parse_events_output_blob, failed_send_events_output_blob)
 
 
 class MockBlobStore(func.Out):
-    def set(self, val: bytes) -> None:
+    def set(self, val: Union[bytes, str]) -> None:
         pass
 
     def get(self) -> bytes:
