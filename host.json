@@ -6,6 +6,12 @@
         "isEnabled": true,
         "excludedTypes": "Request"
       }
+    },
+    "logLevel": {
+      "default": "Debug",
+      "Host.Results": "Error",
+      "Function": "Debug",
+      "Host.Aggregator": "Trace"
     }
   },
   "extensionBundle": {

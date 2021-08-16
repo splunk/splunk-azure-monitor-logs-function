@@ -32,7 +32,8 @@ surrounding them with a `%`. For example, `%EventHubConnection%`.
     "SourceType": "",
     "Region":"",
     "ConsumerGroupName": "",
-    "EventHubName": ""
+    "EventHubName": "",
+    "LogLevel": ""
   }
 }
 ```
@@ -54,6 +55,8 @@ FailedEventsStorageConnection
 - **ConsumerGroupName** The name of the EventHub consumer group. https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-features#event-consumers
 - **EventHubName** The name of the EventHub to receive logs from. This has a one-to-one mapping to sourcetype. ex. 
   EventHub name of `aad-logs` for `azure:aad`, `activity-logs` for `azure:activity`, or `resource-logs` for `azure:resource`
+- **LogLevel** The function logging level in the standard python level name format, ex. `DEBUG`. If not set, defaults to `INFO`.
+
 
 ### Run
 ```bash
@@ -86,3 +89,7 @@ OR
 > func new --name azure_monitor_logs_processor_func --template "Azure Event Hub trigger" --cadinality "many" --connection "EVENTHUB_CONNECTION_STRING" --consumerGroup "splunk-consumer-group" --dataType "string"
 ```
 After being initialized in that manner, an additional output binding for blob storage was added in `function.json`.
+
+## Enabling Debug Logging
+In `host.json`, set `logging.logLevel.default` to `DEBUG` and environment variable `LogLevel` to `DEBUG`.
+> For more info, see https://github.com/Azure/azure-functions-python-worker/issues/248

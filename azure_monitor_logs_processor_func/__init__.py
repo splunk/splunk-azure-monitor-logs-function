@@ -23,7 +23,10 @@ def main(events: List[func.EventHubEvent],  # pylint: disable=invalid-name
     :param failedEventsOutputBlob: the blob where failed to deliver events should be saved
     """
     try:
-        logging.debug('starting with environment %s', os.environ)
+        init_root_logger()
+
+        logging.info('Handling %s event(s)', len(events))
+        logging.debug('Starting with environment %s', os.environ)
         url = '%s/services/collector/event' % os.environ["HecUrl"]
         headers = {
             'Authorization': 'Splunk %s' % os.environ["HecToken"],
@@ -33,24 +36,47 @@ def main(events: List[func.EventHubEvent],  # pylint: disable=invalid-name
         handle_prepush_exception(err, events, failedParseEventsOutputBlob)
         return
 
+    logging.info('Sending %s payload(s) to Splunk', len(payloads))
     failed_payloads = []
     for payload in payloads:
         try:
             push_to_hec(url, headers, payload)
         except Exception as err:  # pylint: disable=broad-except
-            logging.error('Failed to push to HEC. err:%s \npayload:%s', err, payload)
+            logging.error('Failed to push to HEC. err:%s \npayload:%s', err, payload, exc_info=err)
             failed_payloads.append(payload)
 
     handle_push_exceptions(failed_payloads, failedSendEventsOutputBlob)
+    logging.info('Finished handling %s event(s)', len(events))
+
+
+def init_root_logger():
+    """Initialize the root logger. We must set the log level because it gets set by the function
+    worker to INFO. Another way of doing this is to pass the worker a command line argument of
+    '--log-level DEBUG' but is cumbersome to do when deploying. It is easier to just set it in
+    code.
+
+    For more details, see:
+    https://github.com/Azure/azure-functions-python-worker/issues/248
+    """
+    logging.Logger.root.setLevel(level=logging.getLevelName(
+        os.environ.get("LogLevel", "INFO").upper()))
 
 
 def build_payloads(events: List[func.EventHubEvent]) -> List[str]:
+    logging.info('Mapping %s EventHub event(s) into payloads for HEC', len(events))
+
     splunk_events = to_splunk_events(events)
     serialized_splunk_events = [json.dumps(event, separators=(',', ':')) for event in splunk_events]
-    return batch_events(serialized_splunk_events)
+    batched_events = batch_events(serialized_splunk_events)
+
+    logging.info('Mapped %s EventHub event(s) into %s payload(s) for HEC', len(events),
+                 len(batched_events))
+    return batched_events
 
 
 def to_splunk_events(events: List[func.EventHubEvent]) -> List[dict]:
+    logging.info('Mapping %s EventHub event(s) to Splunk events', len(events))
+
     splunk_events = []
     for event in events:
         event_body = event.get_body()
@@ -60,10 +86,13 @@ def to_splunk_events(events: List[func.EventHubEvent]) -> List[dict]:
         for log in logs:
             splunk_events.append(to_splunk_event(log))
 
+    logging.info('Mapped %s EventHub event(s) to Splunk events', len(events))
+
     return splunk_events
 
 
 def batch_events(splunk_events: List[str]) -> List[str]:
+    logging.info('Batching %s Splunk event(s) into payloads for HEC', len(splunk_events))
     if not splunk_events:
         return []
 
@@ -76,12 +105,19 @@ def batch_events(splunk_events: List[str]) -> List[str]:
         else:
             batches.append(splunk_event_json)
 
+    logging.info('Batched %s Splunk event(s) into %s payload(s) for HEC', len(splunk_events),
+                 len(batches))
     return batches
 
 
 def push_to_hec(url: str, headers: Dict, payload: str) -> None:
-    logging.debug('push to hec with url=%s headers=%s payload=%s', url, headers, payload)
+    logging.info('Push to hec with url=%s headers=%s', url, headers)
+    logging.debug('Push to hec with payload=%s', payload)
+
     response = requests.post(url=url, headers=headers, data=payload)
+
+    logging.info('Pushed to hec and got response with code=%s msg=%s', response.status_code,
+                 response.text)
     if not response.ok:
         raise Exception('HEC push failed. code:%s msg:%s' % (response.status_code, response.text))
 
@@ -108,7 +144,8 @@ def get_source() -> str:
 def handle_prepush_exception(exception: Exception,
                              events: List[func.EventHubEvent],
                              output_blob: func.Out[bytes]) -> None:
-    logging.error('Failed before pushing events. err: %s events: %s', exception, events)
+    logging.error('Failed before pushing events. err: %s events: %s', exception, events,
+                  exc_info=exception)
     event_body_list = []
     for event in events:
         event_body = event.get_body()
@@ -116,10 +153,13 @@ def handle_prepush_exception(exception: Exception,
 
     event_body_output = b'%s' % (b'\n'.join(event_body_list))
     output_blob.set(event_body_output)
+    logging.info('Backed up %s EventHub event(s) to blob storage', len(events))
 
 
 def handle_push_exceptions(failed_requests: list, output_blob: func.Out[bytes]) -> None:
     if not failed_requests:
         return
+
     output_string = '\n'.join(failed_requests)
     output_blob.set(output_string)
+    logging.info('Backed up %s failed requests to blob storage', len(failed_requests))
