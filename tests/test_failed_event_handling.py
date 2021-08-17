@@ -21,6 +21,7 @@ import os
 import common
 from base_azure_function_test_case import BaseAzureFunctionTestCase, MockBlobStore
 
+
 class TestFailedEventHandling(BaseAzureFunctionTestCase):
     @patch('requests.post')
     @patch('base_azure_function_test_case.MockBlobStore.set')
@@ -82,7 +83,7 @@ class TestFailedEventHandling(BaseAzureFunctionTestCase):
         with patch.dict(os.environ, common.MOCK_ENV):
             self.run_func(log_lists, MockBlobStore(), MockBlobStore())
 
-        expected_msg = '{"event":{"Foo":"bar"},' \
+        expected_msg = '{"event":{"Foo":"bar","data_manager_input_id":"mock-input-id"},' \
                         '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name"' \
                         ',"sourcetype":"mock_sourcetype"}'
         blob_set.assert_called_once_with(expected_msg)
@@ -96,7 +97,7 @@ class TestFailedEventHandling(BaseAzureFunctionTestCase):
         with patch.dict(os.environ, common.MOCK_ENV):
             self.run_func(log_lists, MockBlobStore(), MockBlobStore())
 
-        expected_msg = '{"event":{"Foo":"bar"},' \
+        expected_msg = '{"event":{"Foo":"bar","data_manager_input_id":"mock-input-id"},' \
                         '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name"' \
                         ',"sourcetype":"mock_sourcetype"}'
         blob_set.assert_called_once_with(expected_msg)
@@ -122,10 +123,10 @@ class TestFailedEventHandling(BaseAzureFunctionTestCase):
         with patch.dict(os.environ, common.MOCK_ENV):
             self.run_func(log_lists, MockBlobStore(), MockBlobStore())
 
-        expected_msg = '{"event":{"Foo":"from_msg1"},'\
+        expected_msg = '{"event":{"Foo":"from_msg1","data_manager_input_id":"mock-input-id"},'\
                         '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",'\
                         '"sourcetype":"mock_sourcetype"}\n'\
-                        '{"event":{"Foo":"from_msg2"},'\
+                        '{"event":{"Foo":"from_msg2","data_manager_input_id":"mock-input-id"},'\
                         '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",'\
                         '"sourcetype":"mock_sourcetype"}'
         blob_set.assert_called_once_with(expected_msg)
@@ -151,7 +152,7 @@ class TestFailedEventHandling(BaseAzureFunctionTestCase):
         with patch.dict(os.environ, common.MOCK_ENV):
             self.run_func(log_lists, MockBlobStore(), MockBlobStore())
 
-        expected_msg = '{"event":{"Foo":"from_msg1"},' \
+        expected_msg = '{"event":{"Foo":"from_msg1","data_manager_input_id":"mock-input-id"},' \
                         '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name"' \
                         ',"sourcetype":"mock_sourcetype"}'
         blob_set.assert_called_once_with(expected_msg)

@@ -35,13 +35,13 @@ class TestAzureFunction(BaseAzureFunctionTestCase):
         expected_headers = {
             'Authorization': 'Splunk mock_hec_token',
         }
-        expected_data = '{"event":{"Foo":"bar"},' \
+        expected_data = '{"event":{"Foo":"bar","data_manager_input_id":"mock-input-id"},' \
                         '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",' \
                         '"sourcetype":"mock_sourcetype"}'
         post.assert_called_once_with(url=expected_url, headers=expected_headers, data=expected_data)
 
     @patch('requests.post')
-    @patch('azure_monitor_logs_processor_func.SPLUNK_BATCH_MAX_SIZE_BYTES', 240)
+    @patch('azure_monitor_logs_processor_func.SPLUNK_BATCH_MAX_SIZE_BYTES', 320)
     def test_batching(self, post):
         post.return_value = common.MOCK_GOOD_RESPONSE
         log_lists = [
@@ -68,13 +68,13 @@ class TestAzureFunction(BaseAzureFunctionTestCase):
         expected_headers = {
             'Authorization': 'Splunk mock_hec_token',
         }
-        expected_data1 = '{"event":{"Foo":"from_msg1"},' \
+        expected_data1 = '{"event":{"Foo":"from_msg1","data_manager_input_id":"mock-input-id"},' \
                          '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",' \
                          '"sourcetype":"mock_sourcetype"}' \
-                         '{"event":{"Foo":"from_msg2"},' \
+                         '{"event":{"Foo":"from_msg2","data_manager_input_id":"mock-input-id"},' \
                          '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",' \
                          '"sourcetype":"mock_sourcetype"}'
-        expected_data2 = '{"event":{"Foo":"from_msg2"},' \
+        expected_data2 = '{"event":{"Foo":"from_msg2","data_manager_input_id":"mock-input-id"},' \
                          '"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",' \
                          '"sourcetype":"mock_sourcetype"}'
         call1 = call(url=expected_url, headers=expected_headers, data=expected_data1)

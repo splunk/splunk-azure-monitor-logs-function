@@ -55,6 +55,7 @@ FailedEventsStorageConnection
 - **ConsumerGroupName** The name of the EventHub consumer group. https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-features#event-consumers
 - **EventHubName** The name of the EventHub to receive logs from. This has a one-to-one mapping to sourcetype. ex. 
   EventHub name of `aad-logs` for `azure:aad`, `activity-logs` for `azure:activity`, or `resource-logs` for `azure:resource`
+- **DataManagerInputId** The ID of the Splunk Cloud Data Manager input, ex. `X99XXXXX-111X-222X-X333-XX789X789X789X`.
 - **LogLevel** The function logging level in the standard python level name format, ex. `DEBUG`. If not set, defaults to `INFO`.
 
 

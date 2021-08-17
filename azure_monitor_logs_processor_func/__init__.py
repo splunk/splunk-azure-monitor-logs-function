@@ -138,6 +138,7 @@ def push_to_hec(url: str, headers: Dict, payload: str) -> None:
 
 
 def to_splunk_event(log: Dict) -> Dict:
+    log['data_manager_input_id'] = os.environ["DataManagerInputId"]
     return {
         'event': log,
         'source': get_source(),

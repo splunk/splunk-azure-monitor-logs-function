@@ -25,6 +25,7 @@ MOCK_ENV = {
     # letter, and it must end with a letter or number.
     'EventHubConnection': "key1=val;Endpoint=sb://Mock-0-Namespace1.servicebus.windows.net/;key2=v",
     'EventHubName': 'mock-eh-name',
+    'DataManagerInputId': 'mock-input-id'
 }
 MOCK_GOOD_RESPONSE = requests.Response()
 MOCK_GOOD_RESPONSE.status_code = 200
