@@ -8,10 +8,10 @@
       }
     },
     "logLevel": {
-      "default": "Information",
-      "Host.Results": "Information",
-      "Function": "Information",
-      "Host.Aggregator": "Information"
+      "default": "Debug",
+      "Host.Results": "Error",
+      "Function": "Debug",
+      "Host.Aggregator": "Trace"
     }
   },
   "extensionBundle": {

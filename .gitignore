@@ -54,3 +54,6 @@ __pycache__/
 # Coverage
 .coverage
 coverage.xml
+
+# Visual Studio Code
+.vscode

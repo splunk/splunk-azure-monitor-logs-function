@@ -7,10 +7,7 @@
 1. Azure CLI
    * https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
    * Run `az login` after installation complete
-1. Make sure you have Python 3.7.x and then run
-   * `> python -m venv .venv` 
-   * `> source .venv/bin/activate` 
-   * If you're on Linux and Python didn't install the venv package, run `sudo apt-get install python3-venv`
+1. Make sure you have Node 14
 
 ### Local config
 Create a file named `local.settings.json` at the root of the repository and fill in the appropriate values. The values 
@@ -24,7 +21,7 @@ surrounding them with a `%`. For example, `%EventHubConnection%`.
 {
   "IsEncrypted": false,
   "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
     "AzureWebJobsStorage": "",
     "FailedEventsStorageConnection": "",
     "EventHubConnection":"",
@@ -59,10 +56,9 @@ FailedEventsStorageConnection
 - **LogLevel** The function logging level in the standard python level name format, ex. `DEBUG`. If not set, defaults to `INFO`.
 
 
-### Run
+### Build and run
 ```bash
-> pip install -r requirements.txt
-> func start
+> npm run start
 ```
 
 ### Run tests
@@ -91,6 +87,6 @@ OR
 ```
 After being initialized in that manner, an additional output binding for blob storage was added in `function.json`.
 
-## Enabling Debug Logging
-In `host.json`, set `logging.logLevel.default` to `DEBUG` and environment variable `LogLevel` to `DEBUG`.
-> For more info, see https://github.com/Azure/azure-functions-python-worker/issues/248
+## Enabling Verbose Logging
+In `host.json`, set `logging.logLevel.Function` to `Trace` to enable verbose logging just for our Azure Function code.
+For more logging options for other components, see https://docs.microsoft.com/en-us/azure/azure-functions/configure-monitoring?tabs=v2#configure-log-levels

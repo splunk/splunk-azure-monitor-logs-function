@@ -1,5 +1,5 @@
 {
-  "scriptFile": "__init__.py",
+  "scriptFile": "../dist/azure_monitor_logs_processor_func/index.js",
   "bindings": [
     {
       "type": "eventHubTrigger",
@@ -8,8 +8,7 @@
       "eventHubName": "%EventHubName%",
       "connection": "EventHubConnection",
       "cardinality": "many",
-      "consumerGroup": "%ConsumerGroupName%",
-      "dataType": "binary"
+      "consumerGroup": "%ConsumerGroupName%"
     },
     {
       "name": "failedParseEventsOutputBlob",

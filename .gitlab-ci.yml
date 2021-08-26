@@ -1,29 +1,15 @@
-image: python:3.7.11
+# Image running node 14, the runtime version Azure Function uses for TypeScript
+# https://docs.microsoft.com/en-us/azure/azure-functions/functions-versions
+image: node:14
 
-variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-
+# This folder is cached between builds
+# https://docs.gitlab.com/ee/ci/yaml/index.html#cache
 cache:
   paths:
-    - .cache/pip
-    - .venv/
-
-before_script:
-  - python -V  # Print out python version for debugging
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
+    - node_modules/
 
 test:
   script:
-    - pip install -r requirements.txt
-    - pip install pytest
-    - pip install pylint
-    - pip install coverage
-    - coverage run -m pytest tests
-    - coverage report
-    - coverage xml
-    - pylint **/*.py
-  artifacts:
-    reports:
-      cobertura: coverage.xml
+    - npm install
+    - npm run build
+    - npm test
