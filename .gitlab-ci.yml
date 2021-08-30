@@ -8,6 +8,22 @@ cache:
   paths:
     - node_modules/
 
+include:
+  - project: 'prodsec/whitesource'
+    ref: latest
+    file: '/templates/.whitesource.yml'
+
+whitesource:
+  extends: .whitesource
+  stage: test
+  variables:
+    ws_user_key: ${WHITESOURCE_USER_KEY}
+    product_id: ${WHITESOURCE_ID}
+    config: js-npm
+  only:
+    refs:
+      - main
+
 test:
   script:
     - npm install
