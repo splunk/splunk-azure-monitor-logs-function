@@ -13,10 +13,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-import {Context, ContextBindings, Logger} from "@azure/functions"
-import axios, {AxiosInstance} from "axios"
+import { Context, ContextBindings, Logger } from "@azure/functions"
+import axios, { AxiosInstance } from "axios"
+import * as moment from "moment"
 
-const SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000
+const DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000;
 
 /**
  * Entrypoint for function that handles a list of events.
@@ -86,9 +87,10 @@ function createHecHttpClient(log: Logger, hecUrl: string | undefined, hecToken: 
 function buildHecPayloads(log: Logger, eventHubMessages: any[]): string[] {
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) into payloads for HEC.`);
 
+  const batchSize = parseInt(process.env.SPLUNK_BATCH_MAX_SIZE_BYTES || '');
   const splunkEvents = toSplunkEvents(log, eventHubMessages);
   const serializedEvents = splunkEvents.map(e => JSON.stringify(e));
-  const batchedEvents = batchSerializedEvents(log, serializedEvents);
+  const batchedEvents = batchSerializedEvents(log, serializedEvents, batchSize || DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES);
 
   log.info(`Mapped ${eventHubMessages.length} EventHub message(s) into ${batchedEvents.length} payload(s) for HEC.`);
   return batchedEvents;
@@ -152,10 +154,14 @@ function getSource(): string {
  * @param record the record to extract a timestamp from.
  */
 function tryExtractTimestamp(record: any): string | undefined {
-  if (record.hasOwnProperty('time')) {
-    return new Date(record.time).getTime().toString();
+  if (!record.hasOwnProperty('time')) {
+    return undefined;
   }
-  return undefined;
+  const time = moment.utc(record.time).valueOf();
+  if (isNaN(time)) {
+    return undefined;
+  }
+  return time.toString();
 }
 
 /**
@@ -163,7 +169,7 @@ function tryExtractTimestamp(record: any): string | undefined {
  * @param log the logger to use.
  * @param serializedEvents the serialized events to batch.
  */
-function batchSerializedEvents(log: Logger, serializedEvents: string[]): string[] {
+function batchSerializedEvents(log: Logger, serializedEvents: string[], batchSize: number): string[] {
   log.info(`Batching ${serializedEvents.length} Splunk event(s) into payloads for HEC`);
   if (serializedEvents.length == 0) {
     return [];
@@ -173,7 +179,7 @@ function batchSerializedEvents(log: Logger, serializedEvents: string[]): string[
   for (const serializedEvent of serializedEvents) {
     let currentBatch = batches[batches.length - 1];
     const potentialSize = serializedEvent.length + currentBatch.length;
-    if (currentBatch.length == 0 || potentialSize <= SPLUNK_BATCH_MAX_SIZE_BYTES) {
+    if (currentBatch.length == 0 || potentialSize <= batchSize) {
       batches[batches.length - 1] = currentBatch + serializedEvent;
     } else {
       batches.push(serializedEvent);
@@ -195,8 +201,7 @@ async function pushToHec(log: Logger, hecHttpClient: AxiosInstance, payload: str
   const response = await hecHttpClient.post('services/collector/event', payload);
   log.verbose(`Pushed to HEC and got response with Code=${response.status} Body=${JSON.stringify(response.data)}`);
 
-  if (!(response.status>=200 && response.status<300))
-  {
+  if (!(response.status >= 200 && response.status < 300)) {
     throw new Error(`HEC push failed. Code=${response.status}, Body=${JSON.stringify(response.data)}`);
   }
 }

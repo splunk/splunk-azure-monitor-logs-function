@@ -49,6 +49,9 @@ __pycache__/
 # Intellij
 .idea/
 
+# VScode
+.vscode
+
 /azure_monitor_logs_processor_func/host.json
 
 # Coverage
@@ -57,3 +60,7 @@ coverage.xml
 
 # Visual Studio Code
 .vscode
+
+# code coverage
+coverage/
+.nyc_output/
