@@ -1,4 +1,4 @@
 .vscode/
 tests/
 .old/
-.venv/
+deploy/
