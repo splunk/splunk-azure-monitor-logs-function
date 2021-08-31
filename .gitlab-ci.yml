@@ -12,6 +12,16 @@ include:
   - project: 'prodsec/whitesource'
     ref: latest
     file: '/templates/.whitesource.yml'
+  - project: 'prodsec/scp-scanning/gitlab-checkmarx'
+    ref: latest
+    file: '/templates/.sast_scan.yml'
+
+sast-scanner:
+  stage: test
+  extends: .sast_scan
+  variables:
+    SAST_SCANNER: "Semgrep"
+    alert_mode: "policy" # Alert mode turned on to fail on any high vulns
 
 whitesource:
   extends: .whitesource
