@@ -1,4 +1,5 @@
 # Azure Monitor Logs Azure Function
+An Azure Function that forwards Event Hub messages containing Azure Monitor logs to Splunk for the Splunk Cloud Data Manager application.
 
 ## Setting up Dev Environment
 ### Install tools
@@ -38,10 +39,10 @@ surrounding them with a `%`. For example, `%EventHubConnection%`.
 - **AzureWebJobsStorage** Connection string to a storage account for Azure Function runtime storage. Can be the same as
 FailedEventsStorageConnection
 - **FailedEventsStorageConnection** Connection string to storage account where failed events will be saved.
-  [Azure Function output binding for storage configuration docs](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-storage-blob-output?tabs=python#configuration)
+  [Azure Function output binding for storage configuration docs](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-storage-blob-output?tabs=javascript#configuration)
   [Storage docs](https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string)
 - **EventHubConnection** Connection string to the EventHub *namespace* to read from.
-  [Azure Function trigger for EvenHubs configuration docs](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-event-hubs-trigger?tabs=python#configuration).
+  [Azure Function trigger for EvenHubs configuration docs](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-event-hubs-trigger?tabs=javascript#configuration).
   [EventHub docs](https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-get-connection-string).
 - **HecUrl** The HEC URL to where events should be sent, ex. `https://http-inputs-tenant-name.env.splunkcloud.com:443`. See [Splunk HEC documentation](https://docs.splunk.com/Documentation/Splunk/8.2.1/Data/UsetheHTTPEventCollector) for details. Do not include `/<endpoint>` since the function needs to specify it. Equivalent to the `Splunk HEC URL` parameter in [Splunk Dataflow template](https://cloud.google.com/blog/products/data-analytics/connect-to-splunk-with-a-dataflow-template).
 - **HecToken** The HEC Token associated with `HecUrl`, ex. `X99XXXXX-111X-222X-X333-XX789X789X789X`.
@@ -53,7 +54,6 @@ FailedEventsStorageConnection
 - **EventHubName** The name of the EventHub to receive logs from. This has a one-to-one mapping to sourcetype. ex.
   EventHub name of `aad-logs` for `azure:aad`, `activity-logs` for `azure:activity`, or `resource-logs` for `azure:resource`
 - **DataManagerInputId** The ID of the Splunk Cloud Data Manager input, ex. `X99XXXXX-111X-222X-X333-XX789X789X789X`.
-- **LogLevel** The function logging level in the standard python level name format, ex. `DEBUG`. If not set, defaults to `INFO`.
 
 
 ### Build and run
@@ -80,9 +80,9 @@ OR
 
 ## How this project was created
 ```bash
-> func init azure_monitor_logs_processor_func --python
-> cd azure_monitor_logs_processor_func
-> func new --name azure_monitor_logs_processor_func --template "Azure Event Hub trigger" --cadinality "many" --connection "EVENTHUB_CONNECTION_STRING" --consumerGroup "splunk-consumer-group" --dataType "string"
+> func init azure-monitor-logs-azure-function --typescript
+> cd azure-monitor-logs-azure-function
+> func new --name azure_monitor_logs_processor_func --template "Azure Event Hub trigger" --cadinality "many" --connection "EVENTHUB_CONNECTION_STRING"
 ```
 After being initialized in that manner, an additional output binding for blob storage was added in `function.json`.
 
