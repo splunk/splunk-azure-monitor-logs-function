@@ -35,11 +35,14 @@
     },
     "scdmInputId": {
       "type": "string"
+    },
+    "servicePrincipalObjectId": {
+      "type": "string"
     }
   },
   "variables": {
-    "resourceGroupName": "[concat('splkAadLogsRg', parameters('scdmInputId'))]",
-    "resourceDeployment": "[concat('splkAadLogsRd', parameters('scdmInputId'))]"
+    "resourceGroupName": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]",
+    "resourceDeployment": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]"
   },
   "resources": [
     {
@@ -89,6 +92,9 @@
           },
           "scdmInputId": {
             "value": "[parameters('scdmInputId')]"
+          },
+          "servicePrincipalObjectId": {
+            "value": "[parameters('servicePrincipalObjectId')]"
           }
         },
         "template": {
@@ -121,6 +127,9 @@
             },
             "scdmInputId": {
               "type": "string"
+            },
+            "servicePrincipalObjectId": {
+              "type": "string"
             }
           },
           "variables": {
@@ -134,6 +143,48 @@
             "storageAccountName": "[if(equals(parameters('altStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altStorageName'))]"
           },
           "resources": [
+            {
+              "name": "[parameters('scdmInputId')]",
+              "type": "Microsoft.Authorization/roleDefinitions",
+              "apiVersion": "2018-07-01",
+              "properties": {
+                "description": "This role will allow Splunk Data Manager to read the metadata of your Azure Subscription and Azure resources created during this ARM deployment (such as the Event Hub Namespace and Storage Account) so that Splunk can make recommendations during onboarding.",
+                "roleName": "[concat('splunk-dm-read-only-', parameters('scdmInputId'))]",
+                "type": "CustomRole",
+                "assignableScopes": "[array(resourceGroup().id)]",
+                "permissions": [
+                  {
+                    "actions": [
+                      "Microsoft.Authorization/roleDefinitions/read",
+                      "Microsoft.Authorization/roleAssignments/read",
+                      "Microsoft.EventHub/namespaces/read",
+                      "Microsoft.EventHub/namespaces/authorizationRules/read",
+                      "Microsoft.EventHub/namespaces/eventhubs/read",
+                      "Microsoft.EventHub/namespaces/eventHubs/consumergroups/read",
+                      "Microsoft.Resources/deployments/read",
+                      "Microsoft.Storage/storageAccounts/read",
+                      "Microsoft.Web/sites/read",
+                      "Microsoft.Web/serverfarms/read",
+                      "Microsoft.Web/sites/sourcecontrols/read"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "[parameters('scdmInputId')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2018-07-01",
+              "dependsOn": [
+                "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
+              ],
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]",
+                "principalId": "[parameters('servicePrincipalObjectId')]",
+                "principalType": "ServicePrincipal",
+                "scope": "[resourceGroup().id]"
+              }
+            },
             {
               "type": "Microsoft.EventHub/namespaces",
               "apiVersion": "2021-01-01-preview",
