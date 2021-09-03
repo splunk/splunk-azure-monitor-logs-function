@@ -28,10 +28,12 @@
       "type": "string"
     },
     "repoBranch": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": "main"
     },
     "repoUrl": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": "https://github.com/splunk/splunk-azure-monitor-logs-function"
     },
     "scdmInputId": {
       "type": "string"
