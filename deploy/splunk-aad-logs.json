@@ -14,10 +14,6 @@
       "type": "string",
       "defaultValue": ""
     },
-    "eventHubMaxThroughputUnits": {
-      "type": "int",
-      "defaultValue": 10
-    },
     "hecToken": {
       "type": "securestring"
     },
@@ -77,9 +73,6 @@
           "altStorageName": {
             "value": "[parameters('altStorageName')]"
           },
-          "eventHubMaxThroughputUnits": {
-            "value": "[parameters('eventHubMaxThroughputUnits')]"
-          },
           "hecToken": {
             "value": "[parameters('hecToken')]"
           },
@@ -112,9 +105,6 @@
             "altStorageName": {
               "type": "string"
             },
-            "eventHubMaxThroughputUnits": {
-              "type": "int"
-            },
             "hecToken": {
               "type": "securestring"
             },
@@ -137,6 +127,7 @@
           "variables": {
             "consumerGroupName": "splk-aad-logs-consumer-group",
             "eventHubAuthRule": "splk-aad-logs-eventhub-auth",
+            "eventHubMaxThroughputUnits": 40,
             "eventHubName": "splk-aad-logs-eventhub",
             "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkAadLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
             "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkAadLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
@@ -194,7 +185,7 @@
               "location": "[resourceGroup().location]",
               "properties": {
                 "isAutoInflateEnabled": true,
-                "maximumThroughputUnits": "[parameters('eventHubMaxThroughputUnits')]"
+                "maximumThroughputUnits": "[variables('eventHubMaxThroughputUnits')]"
               },
               "sku": {
                 "name": "Standard",
