@@ -79,6 +79,9 @@
           "hecUrl": {
             "value": "[parameters('hecUrl')]"
           },
+          "region": {
+              "value": "[parameters('region')]"
+          },
           "repoBranch": {
             "value": "[parameters('repoBranch')]"
           },
@@ -114,6 +117,9 @@
             "repoBranch": {
               "type": "string"
             },
+            "region": {
+              "type": "string"
+            },
             "repoUrl": {
               "type": "string"
             },
@@ -132,7 +138,6 @@
             "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkAadLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
             "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkAadLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
             "hostingPlanName": "splk-aad-logs-hosting-plan",
-            "region": "[resourceGroup().location]",
             "storageAccountName": "[if(equals(parameters('altStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altStorageName'))]"
           },
           "resources": [
@@ -167,7 +172,7 @@
             {
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2018-07-01",
+              "apiVersion": "2020-10-01-preview",
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
               ],
@@ -182,7 +187,7 @@
               "type": "Microsoft.EventHub/namespaces",
               "apiVersion": "2021-01-01-preview",
               "name": "[variables('eventHubNamespaceName')]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('region')]",
               "properties": {
                 "isAutoInflateEnabled": true,
                 "maximumThroughputUnits": "[variables('eventHubMaxThroughputUnits')]"
@@ -235,7 +240,7 @@
               "type": "Microsoft.Storage/storageAccounts",
               "apiVersion": "2021-04-01",
               "name": "[variables('storageAccountName')]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('region')]",
               "sku": {
                 "name": "Standard_LRS"
               },
@@ -245,7 +250,7 @@
               "type": "Microsoft.Web/serverfarms",
               "apiVersion": "2020-12-01",
               "name": "[variables('hostingPlanName')]",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('region')]",
               "kind": "app,linux",
               "properties": {
                 "reserved": true
@@ -259,7 +264,7 @@
               "name": "[variables('functionName')]",
               "type": "Microsoft.Web/sites",
               "apiVersion": "2020-12-01",
-              "location": "[resourceGroup().location]",
+              "location": "[parameters('region')]",
               "kind": "functionapp",
               "dependsOn": [
                 "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
@@ -339,7 +344,7 @@
                     },
                     {
                       "name": "Region",
-                      "value": "[variables('region')]"
+                      "value": "[parameters('region')]"
                     }
                   ]
                 }

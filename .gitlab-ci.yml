@@ -39,3 +39,10 @@ test:
     - npm install
     - npm run build
     - npm test
+
+arm-validate:
+  stage: test
+  image:
+    name: "mcr.microsoft.com/powershell:latest"
+  script:
+    - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy"
