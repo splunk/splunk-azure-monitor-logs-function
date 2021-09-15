@@ -132,7 +132,8 @@
           },
           "variables": {
             "consumerGroupName": "splk-aad-logs-consumer-group",
-            "eventHubAuthRule": "splk-aad-logs-eventhub-auth",
+            "eventHubAuthRuleListen": "splk-aad-logs-eventhub-auth-listen",
+            "eventHubAuthRuleSend": "splk-aad-logs-eventhub-auth-send",
             "eventHubMaxThroughputUnits": 40,
             "eventHubName": "splk-aad-logs-eventhub",
             "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkAadLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
@@ -222,15 +223,28 @@
                 {
                   "type": "AuthorizationRules",
                   "apiVersion": "2021-01-01-preview",
-                  "name": "[variables('eventHubAuthRule')]",
+                  "name": "[variables('eventHubAuthRuleListen')]",
                   "dependsOn": [
                     "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
                     "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
                   ],
                   "properties": {
                     "rights": [
-                      "Send",
                       "Listen"
+                    ]
+                  }
+                },
+                {
+                  "type": "AuthorizationRules",
+                  "apiVersion": "2021-01-01-preview",
+                  "name": "[variables('eventHubAuthRuleSend')]",
+                  "dependsOn": [
+                    "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
+                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
+                  ],
+                  "properties": {
+                    "rights": [
+                      "Send"
                     ]
                   }
                 }
@@ -323,7 +337,7 @@
                     },
                     {
                       "name": "EventHubConnection",
-                      "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRule')), '2021-01-01-preview').primaryConnectionString]"
+                      "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleListen')), '2021-01-01-preview').primaryConnectionString]"
                     },
                     {
                       "name": "FailedEventsStorageConnection",
