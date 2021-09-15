@@ -172,7 +172,7 @@
             {
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2020-10-01-preview",
+              "apiVersion": "2021-04-01-preview",
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
               ],
