@@ -1,0 +1,396 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "altEventHubNamespaceName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "altFunctionName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "altStorageName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "hecToken": {
+      "type": "securestring"
+    },
+    "hecUrl": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "repoBranch": {
+      "type": "string",
+      "defaultValue": "main"
+    },
+    "repoUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/splunk/splunk-azure-monitor-logs-function"
+    },
+    "scdmInputId": {
+      "type": "string"
+    },
+    "servicePrincipalObjectId": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "resourceGroupName": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]",
+    "resourceDeployment": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "location": "[parameters('region')]",
+      "name": "[variables('resourceGroupName')]",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2021-04-01",
+      "name": "[variables('resourceDeployment')]",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "Inner"
+        },
+        "parameters": {
+          "altEventHubNamespaceName": {
+            "value": "[parameters('altEventHubNamespaceName')]"
+          },
+          "altFunctionName": {
+            "value": "[parameters('altFunctionName')]"
+          },
+          "altStorageName": {
+            "value": "[parameters('altStorageName')]"
+          },
+          "hecToken": {
+            "value": "[parameters('hecToken')]"
+          },
+          "hecUrl": {
+            "value": "[parameters('hecUrl')]"
+          },
+          "region": {
+            "value": "[parameters('region')]"
+          },
+          "repoBranch": {
+            "value": "[parameters('repoBranch')]"
+          },
+          "repoUrl": {
+            "value": "[parameters('repoUrl')]"
+          },
+          "scdmInputId": {
+            "value": "[parameters('scdmInputId')]"
+          },
+          "servicePrincipalObjectId": {
+            "value": "[parameters('servicePrincipalObjectId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "altEventHubNamespaceName": {
+              "type": "string"
+            },
+            "altFunctionName": {
+              "type": "string"
+            },
+            "altStorageName": {
+              "type": "string"
+            },
+            "hecToken": {
+              "type": "securestring"
+            },
+            "hecUrl": {
+              "type": "string"
+            },
+            "repoBranch": {
+              "type": "string"
+            },
+            "region": {
+              "type": "string"
+            },
+            "repoUrl": {
+              "type": "string"
+            },
+            "scdmInputId": {
+              "type": "string"
+            },
+            "servicePrincipalObjectId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "consumerGroupName": "splk-activity-logs-consumer-group",
+            "eventHubAuthRuleListen": "splk-activity-logs-eventhub-auth-listen",
+            "eventHubAuthRuleSend": "splk-activity-logs-eventhub-auth-send",
+            "eventHubMaxThroughputUnits": 40,
+            "eventHubName": "splk-activity-logs-eventhub",
+            "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkActLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
+            "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkActLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
+            "hostingPlanName": "splk-activity-logs-hosting-plan",
+            "storageAccountName": "[if(equals(parameters('altStorageName'), ''), concat('splkactstr', uniqueString(parameters('scdmInputId'))), parameters('altStorageName'))]"
+          },
+          "resources": [
+            {
+              "name": "[parameters('scdmInputId')]",
+              "type": "Microsoft.Authorization/roleDefinitions",
+              "apiVersion": "2018-07-01",
+              "properties": {
+                "description": "This role will allow Splunk Data Manager to read the metadata of your Azure Subscription and Azure resources created during this ARM deployment (such as the Event Hub Namespace and Storage Account) so that Splunk can make recommendations during onboarding.",
+                "roleName": "[concat('splunk-dm-read-only-', parameters('scdmInputId'))]",
+                "type": "CustomRole",
+                "assignableScopes": "[array(resourceGroup().id)]",
+                "permissions": [
+                  {
+                    "actions": [
+                      "Microsoft.Authorization/roleDefinitions/read",
+                      "Microsoft.Authorization/roleAssignments/read",
+                      "Microsoft.EventHub/namespaces/read",
+                      "Microsoft.EventHub/namespaces/authorizationRules/read",
+                      "Microsoft.EventHub/namespaces/eventhubs/read",
+                      "Microsoft.EventHub/namespaces/eventHubs/consumergroups/read",
+                      "Microsoft.Resources/deployments/read",
+                      "Microsoft.Storage/storageAccounts/read",
+                      "Microsoft.Web/sites/read",
+                      "Microsoft.Web/serverfarms/read",
+                      "Microsoft.Web/sites/sourcecontrols/read"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "[parameters('scdmInputId')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2021-04-01-preview",
+              "dependsOn": [
+                "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
+              ],
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]",
+                "principalId": "[parameters('servicePrincipalObjectId')]",
+                "principalType": "ServicePrincipal",
+                "scope": "[resourceGroup().id]"
+              }
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces",
+              "apiVersion": "2021-01-01-preview",
+              "name": "[variables('eventHubNamespaceName')]",
+              "location": "[parameters('region')]",
+              "properties": {
+                "isAutoInflateEnabled": true,
+                "maximumThroughputUnits": "[variables('eventHubMaxThroughputUnits')]"
+              },
+              "sku": {
+                "name": "Standard",
+                "tier": "Standard"
+              },
+              "resources": [
+                {
+                  "type": "eventhubs",
+                  "apiVersion": "2021-01-01-preview",
+                  "name": "[variables('eventHubName')]",
+                  "properties": {
+                    "partitionCount": 32
+                  },
+                  "dependsOn": [
+                    "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]"
+                  ],
+                  "resources": [
+                    {
+                      "apiVersion": "2021-01-01-preview",
+                      "type": "consumergroups",
+                      "name": "[variables('consumerGroupName')]",
+                      "dependsOn": [
+                        "[variables('eventHubName')]"
+                      ],
+                      "properties": {}
+                    }
+                  ]
+                },
+                {
+                  "type": "AuthorizationRules",
+                  "apiVersion": "2021-01-01-preview",
+                  "name": "[variables('eventHubAuthRuleListen')]",
+                  "dependsOn": [
+                    "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
+                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
+                  ],
+                  "properties": {
+                    "rights": [
+                      "Listen"
+                    ]
+                  }
+                },
+                {
+                  "type": "AuthorizationRules",
+                  "apiVersion": "2021-01-01-preview",
+                  "name": "[variables('eventHubAuthRuleSend')]",
+                  "dependsOn": [
+                    "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
+                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
+                  ],
+                  "properties": {
+                    "rights": [
+                      "Send"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-04-01",
+              "name": "[variables('storageAccountName')]",
+              "location": "[parameters('region')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2"
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2020-12-01",
+              "name": "[variables('hostingPlanName')]",
+              "location": "[parameters('region')]",
+              "kind": "functionapp",
+              "properties": {
+                "computeMode": "Dynamic"
+              },
+              "sku": {
+                "name": "Y1",
+                "tier": "Dynamic"
+              }
+            },
+            {
+              "name": "[variables('functionName')]",
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2020-12-01",
+              "location": "[parameters('region')]",
+              "kind": "functionapp",
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+              ],
+              "properties": {
+                "clientAffinityEnabled": false,
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "siteConfig": {
+                  "cors": {
+                    "allowedOrigins": [
+                      "*"
+                    ]
+                  },
+                  "appSettings": [
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~3"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "node"
+                    },
+                    {
+                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                      "value": "~14"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[concat(
+                          'DefaultEndpointsProtocol=https;AccountName=',
+                          variables('storageAccountName'),
+                          ';AccountKey=',
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-04-01').keys[0].value)]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage",
+                      "value": "[concat(
+                          'DefaultEndpointsProtocol=https;AccountName=',
+                          variables('storageAccountName'),
+                          ';AccountKey=',
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-04-01').keys[0].value)]"
+                    },
+                    {
+                      "name": "ConsumerGroupName",
+                      "value": "[variables('consumerGroupName')]"
+                    },
+                    {
+                      "name": "DataManagerInputId",
+                      "value": "[parameters('scdmInputId')]"
+                    },
+                    {
+                      "name": "EventHubName",
+                      "value": "[variables('eventHubName')]"
+                    },
+                    {
+                      "name": "EventHubConnection",
+                      "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleListen')), '2021-01-01-preview').primaryConnectionString]"
+                    },
+                    {
+                      "name": "FailedEventsStorageConnection",
+                      "value": "[concat(
+                          'DefaultEndpointsProtocol=https;AccountName=',
+                          variables('storageAccountName'),
+                          ';AccountKey=',
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-04-01').keys[0].value)]"
+                    },
+                    {
+                      "name": "HecUrl",
+                      "value": "[parameters('hecUrl')]"
+                    },
+                    {
+                      "name": "HecToken",
+                      "value": "[parameters('hecToken')]"
+                    },
+                    {
+                      "name": "LogLevel",
+                      "value": "INFO"
+                    },
+                    {
+                      "name": "SourceType",
+                      "value": "azure:activity"
+                    },
+                    {
+                      "name": "Region",
+                      "value": "[parameters('region')]"
+                    }
+                  ]
+                }
+              },
+              "resources": [
+                {
+                  "apiVersion": "2020-12-01",
+                  "type": "sourcecontrols",
+                  "name": "web",
+                  "dependsOn": [
+                    "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                    "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                    "[resourceId('Microsoft.Web/sites', variables('functionName'))]"
+                  ],
+                  "properties": {
+                    "repoUrl": "[parameters('repoUrl')]",
+                    "branch": "[parameters('repoBranch')]",
+                    "isManualIntegration": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
