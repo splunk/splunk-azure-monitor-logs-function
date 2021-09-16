@@ -251,13 +251,13 @@
               "apiVersion": "2020-12-01",
               "name": "[variables('hostingPlanName')]",
               "location": "[parameters('region')]",
-              "kind": "app,linux",
+              "kind": "functionapp",
               "properties": {
-                "reserved": true
+                "computeMode": "Dynamic"
               },
               "sku": {
-                "name": "S1",
-                "tier": "Standard"
+                "name": "Y1",
+                "tier": "Dynamic"
               }
             },
             {
@@ -280,7 +280,6 @@
                       "*"
                     ]
                   },
-                  "linuxFxVersion": "NODE|14-lts",
                   "appSettings": [
                     {
                       "name": "FUNCTIONS_EXTENSION_VERSION",
@@ -292,7 +291,15 @@
                     },
                     {
                       "name": "WEBSITE_NODE_DEFAULT_VERSION",
-                      "value":"14"
+                      "value": "~14"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[concat(
+                        'DefaultEndpointsProtocol=https;AccountName=',
+                        variables('storageAccountName'),
+                        ';AccountKey=',
+                        listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-04-01').keys[0].value)]"
                     },
                     {
                       "name": "AzureWebJobsStorage",
