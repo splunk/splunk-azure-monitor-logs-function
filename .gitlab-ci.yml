@@ -33,6 +33,7 @@ whitesource:
   only:
     refs:
       - main
+      - develop
 
 test:
   script:
