@@ -41,23 +41,7 @@ describe('Azure Monitor Logs Process', function () {
       });
     });
 
-    it('should call post correct params', async () => {
-      httpClientStub.returns({ post: postStub });
-      postStub.resolves({ status: 200 });
-
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
-      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
-
-      expect(postStub.calledOnce).is.true;
-      expect(postStub.firstCall.args).to.deep.equal([
-        'services/collector/event',
-        `{"event":{"Foo":"bar","data_manager_input_id":"${mockEnv.DataManagerInputId}"},` +
-        `"source":"azure:${mockEnv.Region}:${mockEnv.EventHubNamespace}:${mockEnv.EventHubName}",` +
-        `"sourcetype":"${mockEnv.SourceType}"}`
-      ]);
-    });
-
-    it('should populate all fields in splunk event', async () => {
+    it('should make correct POST request', async () => {
       httpClientStub.returns({ post: postStub });
       postStub.resolves({ status: 200 });
 
@@ -66,14 +50,21 @@ describe('Azure Monitor Logs Process', function () {
 
       expect(postStub.calledOnce).is.true;
       expect(postStub.firstCall.args.length).to.equal(2);
-
-      const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
-      expect(splunkEvent).to.include.keys('event', 'source', 'sourcetype')
-      expect(splunkEvent.source).to.equal(`azure:${mockEnv.Region}:${mockEnv.EventHubNamespace}:${mockEnv.EventHubName}`);
-      expect(splunkEvent.sourcetype).to.equal(mockEnv.SourceType);
-      expect(splunkEvent.event).to.include.keys('Foo', 'data_manager_input_id');
-      expect(splunkEvent.event.Foo).to.equal('bar');
-      expect(splunkEvent.event.data_manager_input_id).to.equal(mockEnv.DataManagerInputId);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar',
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        },
+      });
+      const actualPayload = postStub.firstCall.args[1];
+      expect(expectedPayload).to.equal(actualPayload);
     });
 
     it('should batch events', async () => {
