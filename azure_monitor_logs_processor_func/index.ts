@@ -120,11 +120,13 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[]): SplunkEvent[] {
  * @param record the record to map.
  */
 function toSplunkEvent(record: any): SplunkEvent {
-  record.data_manager_input_id = process.env.DataManagerInputId;
   let splunkEvent: SplunkEvent = {
     event: record,
     source: getSource(),
-    sourcetype: process.env.SourceType
+    sourcetype: process.env.SourceType,
+    fields: {
+      data_manager_input_id: process.env.DataManagerInputId,
+    },
   }
 
   const timeStamp = tryExtractTimestamp(record);
@@ -239,10 +241,11 @@ function handlePushErrors(log: Logger, bindings: SplunkContextBindings, failedPa
  * Represents a Splunk event being sent over HEC via events endpoint.
  */
 type SplunkEvent = {
-  event: any,
+  event: object,
   source: string,
   sourcetype: string | undefined,
-  time?: string
+  fields: object,
+  time?: string,
 };
 
 /**
