@@ -1,7 +1,12 @@
 # Azure Monitor Logs Azure Function
 This function receives data from an Azure Event Hub, parses the messages, and sends the Azure Monitor logs via HEC to the Splunk Platform where they are indexed.
 
+This repository also includes
+* ARM templates to deploy the required Azure resources, including the Azure Function, that send logs to Splunk for the Splunk Cloud Data Manager application
+* PowerShell scripts that enable diagnostic settings on Azure resources
+
 ## Set up the Dev Environment
+
 ### Install tools
 1. Azure Functions Core Tools. Install v3.
    * https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=macos%2Ccsharp%2Cbash#v3
