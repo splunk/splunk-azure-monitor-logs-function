@@ -37,7 +37,7 @@ describe('Azure Monitor Logs Process', function () {
 
       const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
       expect(splunkEvent).to.include.keys('time');
-      expect(splunkEvent.time).to.equal('1623270037603');
+      expect(splunkEvent.time).to.equal(1623270037603);
     });
 
     /**
@@ -53,7 +53,7 @@ describe('Azure Monitor Logs Process', function () {
 
       const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
       expect(splunkEvent).to.include.keys('time');
-      expect(splunkEvent.time).to.equal('1623270037000');
+      expect(splunkEvent.time).to.equal(1623270037000);
     });
 
     it('should extract non utc timestamp', async () => {
@@ -66,7 +66,7 @@ describe('Azure Monitor Logs Process', function () {
 
       const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
       expect(splunkEvent).to.include.keys('time');
-      expect(splunkEvent.time).to.equal('1623288037603');
+      expect(splunkEvent.time).to.equal(1623288037603);
     });
 
     it('should skip invalid timestamp', async () => {

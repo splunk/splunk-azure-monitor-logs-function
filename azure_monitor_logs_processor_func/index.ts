@@ -155,7 +155,7 @@ function getSource(): string {
  * Try to extract a timestamp from a record.
  * @param record the record to extract a timestamp from.
  */
-function tryExtractTimestamp(record: any): string | undefined {
+function tryExtractTimestamp(record: any): number | undefined {
   if (!record.hasOwnProperty('time')) {
     return undefined;
   }
@@ -163,7 +163,7 @@ function tryExtractTimestamp(record: any): string | undefined {
   if (isNaN(time)) {
     return undefined;
   }
-  return time.toString();
+  return time;
 }
 
 /**
@@ -245,7 +245,7 @@ type SplunkEvent = {
   source: string,
   sourcetype: string | undefined,
   fields: object,
-  time?: string,
+  time?: number,
 };
 
 /**
