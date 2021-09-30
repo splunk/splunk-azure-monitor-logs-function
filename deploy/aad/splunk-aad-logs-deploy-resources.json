@@ -275,6 +275,7 @@
                       "*"
                     ]
                   },
+                  "alwaysOn": true,
                   "linuxFxVersion": "NODE|14-lts",
                   "appSettings": [
                     {
