@@ -19,6 +19,12 @@ import * as moment from "moment"
 
 const DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000;
 
+/* This constant mirrors the timeout setting in host.json */
+const FUNC_TIMEOUT = 10 * 60 * 1000;
+const INIT_TIME = 2 * 60 * 1000;
+const WRITE_TIME = 30 * 1000;
+const BUFFER = 30 * 1000;
+
 /**
  * Entrypoint for function that handles a list of events.
  * @param context The context of the current function execution.
@@ -30,11 +36,21 @@ const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
   eventHubMessages: any[]): Promise<void> {
 
   log.verbose(`Starting function with environment ${JSON.stringify(process.env)}`);
-
   try {
-    const hecHttpClient = createHecHttpClient(log, process.env.HecUrl, process.env.HecToken);
     log.info(`Handling ${eventHubMessages.length} event(s)`);
+    const startTime = Date.now();
     const payloads = buildHecPayloads(log, eventHubMessages);
+    const {hecUrl, hecToken} = getHecParams();
+    const timeToBuild = Date.now() - startTime;
+
+    /**
+     * To prevent the timeout from being negative set a minimum timeout of 1ms.
+     * In the event eventHubMessages is empty, payloads.length = 0. Set a minimum of 1 to prevent divide by zero error
+     * This will cause the HEC request to fail immediately and be written to storage
+     */
+    const timeout = Math.max((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - timeToBuild), 1) / Math.max(1, payloads.length);
+
+    const hecHttpClient = createHecHttpClient(log, hecUrl, hecToken, timeout);
 
     log.info(`Sending ${payloads.length} payload(s) to Splunk`);
     const failedPayloads: string[] = [];
@@ -56,25 +72,37 @@ const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
   log.info(`Finished handling ${eventHubMessages.length} event(s)`);
 };
 
+function getHecParams(): HecParams {
+  const hecUrl = process.env.HecUrl;
+  const hecToken = process.env.HecToken;
+
+  if (hecUrl === undefined) {
+    throw new Error('HecUrl is not defined');
+  }
+
+  if (hecToken === undefined) {
+    throw new Error('HecToken is not defined');
+  }
+
+  return {hecUrl, hecToken};
+}
 
 /**
  * Create an HTTP client used for sending data via HEC.
  * @param log the logger to use.
  * @param hecUrl the base url for all HTTP requests.
  * @param hecToken the HEC token added as a default header.
+ * @param timeout the timeout value for the HTTP client in ms
  */
-function createHecHttpClient(log: Logger, hecUrl: string | undefined, hecToken: string | undefined): AxiosInstance {
-  if (hecUrl === undefined) {
-    throw new Error('HecUrl is not defined');
-  }
-
+function createHecHttpClient(log: Logger, hecUrl: string, hecToken: string, timeout: number): AxiosInstance {
   const headers = {
     'Authorization': `Splunk ${hecToken}`
   };
   log.info(`Creating HTTP client baseUrl='${hecUrl}' headers='${JSON.stringify(headers)}'`);
   return axios.create({
     baseURL: hecUrl,
-    headers: headers,
+    headers,
+    timeout,
     validateStatus: () => true
   });
 }
@@ -236,6 +264,14 @@ function handlePushErrors(log: Logger, bindings: SplunkContextBindings, failedPa
   bindings.failedSendEventsOutputBlob = failedPayloads.join('\n');
   log.info(`Backed up ${failedPayloads.length} failed request(s) to blob storage`);
 }
+
+/**
+ * Represents params for HEC HTTP Client.
+ */
+type HecParams = {
+  hecUrl: string,
+  hecToken: string
+};
 
 /**
  * Represents a Splunk event being sent over HEC via events endpoint.

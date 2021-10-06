@@ -23,22 +23,85 @@ describe('Azure Monitor Logs Process', function () {
     });
 
     it('should create httpClient with correct params', async () => {
-      httpClientStub.returns({
-        post: postStub
-      })
-      postStub.resolves({
-        status: 200
-      })
+      httpClientStub.returns({ post: postStub });
+      postStub.resolves({ status: 200 });
+
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(httpClientStub.calledOnce).to.be.true;
       expect(httpClientStub.firstCall.args.length).to.equal(1);
-      expect(httpClientStub.firstCall.args[0]).to.include.keys('baseURL', 'headers');
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('baseURL', 'headers', 'timeout');
       expect(httpClientStub.firstCall.args[0].baseURL).to.equal(mockEnv.HecUrl);
       expect(httpClientStub.firstCall.args[0].headers).to.deep.equal({
         Authorization: `Splunk ${mockEnv.HecToken}`
       });
+    });
+
+    it('should calculate appropriate httpClient timeout', async () => {
+      const dateStub = sandbox.stub(Date, 'now');
+
+      dateStub.onCall(0).returns(new Date(1633453028000));
+      dateStub.onCall(1).returns(new Date(1633453028100));
+
+      // FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload / Number of batches
+      const timeout = ((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100)/1;
+
+      httpClientStub.returns({ post: postStub });
+      postStub.resolves({ status: 200 });
+
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(httpClientStub.calledOnce).to.be.true;
+      expect(httpClientStub.firstCall.args.length).to.equal(1);
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('timeout');
+      expect(httpClientStub.firstCall.args[0].timeout).to.equal(timeout);
+    });
+
+    it('should handle not set negative httpClient timeout', async () => {
+      const dateStub = sandbox.stub(Date, 'now');
+
+      dateStub.onCall(0).returns(new Date(1633453028000));
+      dateStub.onCall(1).returns(new Date(1633454028100));
+
+      const timeout = 1;
+
+      httpClientStub.returns({ post: postStub });
+      postStub.resolves({ status: 200 });
+
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(httpClientStub.calledOnce).to.be.true;
+      expect(httpClientStub.firstCall.args.length).to.equal(1);
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('timeout');
+      expect(httpClientStub.firstCall.args[0].timeout).to.equal(timeout);
+    });
+
+    it('should handle multiple requests httpClient timeout', async () => {
+      const dateStub = sandbox.stub(Date, 'now');
+      sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(10);
+
+      dateStub.onCall(0).returns(new Date(1633453028000));
+      dateStub.onCall(1).returns(new Date(1633453028100));
+
+      // FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload / Number of batches
+      const timeout = ((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100)/2;
+
+      httpClientStub.returns({ post: postStub });
+      postStub.resolves({ status: 200 });
+
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }, { records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(httpClientStub.calledOnce).to.be.true;
+      expect(httpClientStub.firstCall.args.length).to.equal(1);
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('timeout');
+      expect(httpClientStub.firstCall.args[0].timeout).to.equal(timeout);
     });
 
     it('should make correct POST request', async () => {
