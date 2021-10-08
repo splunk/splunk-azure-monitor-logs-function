@@ -25,7 +25,7 @@
     },
     "repoBranch": {
       "type": "string",
-      "defaultValue": "main"
+      "defaultValue": "v2.0"
     },
     "repoUrl": {
       "type": "string",
