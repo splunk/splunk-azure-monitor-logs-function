@@ -14,6 +14,10 @@
       "type": "string",
       "defaultValue": ""
     },
+    "altLogsStorageName": {
+      "type": "string",
+      "defaultValue": ""
+    },
     "hecToken": {
       "type": "securestring"
     },
@@ -73,6 +77,9 @@
           "altStorageName": {
             "value": "[parameters('altStorageName')]"
           },
+          "altLogsStorageName": {
+            "value": "[parameters('altLogsStorageName')]"
+          },
           "hecToken": {
             "value": "[parameters('hecToken')]"
           },
@@ -108,6 +115,9 @@
             "altStorageName": {
               "type": "string"
             },
+            "altLogsStorageName": {
+              "type": "string"
+            },
             "hecToken": {
               "type": "securestring"
             },
@@ -139,7 +149,8 @@
             "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkAadLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
             "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkAadLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
             "hostingPlanName": "splk-aad-logs-hosting-plan",
-            "storageAccountName": "[if(equals(parameters('altStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altStorageName'))]"
+            "storageAccountName": "[if(equals(parameters('altStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altStorageName'))]",
+            "logsStorageAccountName": "[if(equals(parameters('altLogsStorageName'), ''), concat('splklogstr', uniqueString(parameters('scdmInputId'))), parameters('altLogsStorageName'))]"
           },
           "resources": [
             {
@@ -182,6 +193,51 @@
                 "principalId": "[parameters('servicePrincipalObjectId')]",
                 "principalType": "ServicePrincipal",
                 "scope": "[resourceGroup().id]"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-04-01",
+              "name": "[variables('logsStorageAccountName')]",
+              "location": "[parameters('region')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Cool"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-04-01",
+              "name": "[variables('storageAccountName')]",
+              "location": "[parameters('region')]", 
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2"
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
+              "apiVersion": "2017-05-01-preview",
+              "name": "[concat(variables('storageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
+              ],
+              "properties": {
+                "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]",
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 60,
+                      "enabled": true
+                    }
+                  }
+                ]
               }
             },
             {
@@ -251,14 +307,26 @@
               ]
             },
             {
-              "type": "Microsoft.Storage/storageAccounts",
-              "apiVersion": "2021-04-01",
-              "name": "[variables('storageAccountName')]",
-              "location": "[parameters('region')]",
-              "sku": {
-                "name": "Standard_LRS"
-              },
-              "kind": "StorageV2"
+              "type": "Microsoft.EventHub/namespaces/providers/diagnosticSettings",
+              "apiVersion": "2017-05-01-preview",
+              "name": "[concat(variables('eventHubNamespaceName'), '/Microsoft.Insights/', 'splunk-eventhub-namespace-diagnostic-settings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
+              ],
+              "properties": {
+                "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]",
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 60,
+                      "enabled": true
+                    }
+                  }
+                ]
+              }
             },
             {
               "type": "Microsoft.Web/serverfarms",
@@ -272,6 +340,28 @@
               "sku": {
                 "name": "Y1",
                 "tier": "Dynamic"
+              }
+            },
+            {
+              "type": "Microsoft.Web/serverfarms/providers/diagnosticSettings",
+              "apiVersion": "2017-05-01-preview",
+              "name": "[concat(variables('hostingPlanName'), '/Microsoft.Insights/', 'splunk-hosting-plan-diagnostic-settings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
+              ],
+              "properties": {
+                "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]",
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 60,
+                      "enabled": true
+                    }
+                  }
+                ]
               }
             },
             {
@@ -387,6 +477,38 @@
                   }
                 }
               ]
+            },
+            {
+              "type": "Microsoft.Web/sites/providers/diagnosticSettings",
+              "apiVersion": "2017-05-01-preview",
+              "name": "[concat(variables('functionName'), '/Microsoft.Insights/', 'splunk-azure-function-diagnostic-settings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('functionName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
+              ],
+              "properties": {
+                "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]",
+                "logs": [
+                  {
+                    "category": "FunctionAppLogs",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 60,
+                      "enabled": true
+                    }
+                  }
+                ],
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 60,
+                      "enabled": true
+                    }
+                  }
+                ]
+              }
             }
           ]
         }

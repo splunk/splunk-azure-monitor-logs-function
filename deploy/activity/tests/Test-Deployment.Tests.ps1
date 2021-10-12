@@ -193,10 +193,12 @@ Describe "Azure ARM Template Unit Tests" {
         It "Storage Account Created" {
             $storageAccounts = $resourceMap['Microsoft.Storage/storageAccounts']
 
-            $storageAccounts | Should -HaveCount 1
-            $storageAccounts[0].ChangeType | Should -Be "Create"
-            $storageAccounts[0].After["sku"]["name"].Value | Should -Be "Standard_LRS"
-            $storageAccounts[0].After["kind"].Value | Should -Be "StorageV2"
+            $storageAccounts | Should -HaveCount 2
+            foreach ($storageAccount in $storageAccounts) {
+                $storageAccount.ChangeType | Should -Be "Create"
+                $storageAccount.After["sku"]["name"].Value | Should -Be "Standard_LRS"
+                $storageAccount.After["kind"].Value | Should -Be "StorageV2"
+            }
         }
 
         It "App Service Plan Created" {
