@@ -13,6 +13,8 @@ This repository also includes
 1. Azure CLI.
    * https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
    * Run `az login` after installation complete
+1. Pester (in Powershell)
+   * Run `Install-Module -Name Pester` in Powershell
 1. Make sure you have Node 14.
 
 ### Local configuration
@@ -48,7 +50,7 @@ surrounded with `%` symbols. For example, `%EventHubConnection%`.
 - **HecUrl**: The HEC URL that events are sent to. For example, `https://http-inputs-tenant-name.env.splunkcloud.com:443`. See [Set up and use HTTP Event Collector in Splunk Web](https://docs.splunk.com/Documentation/Splunk/8.2.1/Data/UsetheHTTPEventCollector) for details. Do not include `/<endpoint>` in the HEC URI because this is set by the function and not configurable. This argument is equivalent to `Splunk HEC URL` in the [Splunk Dataflow template](https://cloud.google.com/blog/products/data-analytics/connect-to-splunk-with-a-dataflow-template).
 - **HecToken**: The HEC Token associated with `HecUrl`. For example, `X99XXXXX-111X-222X-X333-XX789X789X789X`.
 - **SourceType**: The `sourcetype` set on each ingested log. For example, `azure:aad`, `azure:activity`, or `azure:resource`. This argument is also for the path to the file containing the logs that could not be delivered.
-- **Region**: The region this function sets on each ingested log. For example, `useast1`. This argument is also used for the path to the file containing the logs that could not be delivered. 
+- **Region**: The region this function sets on each ingested log. For example, `useast1`. This argument is also used for the path to the file containing the logs that could not be delivered.
 - **ConsumerGroupName**: The name of the EventHub consumer group. See [Event consumers](https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-features#event-consumers) in the Microsoft Azure documentation.
 - **EventHubName**: The name of the EventHub to receive logs from. This has a one-to-one mapping to sourcetype. For example, EventHub name of `aad-logs` for `azure:aad`, `activity-logs` for `azure:activity`, or `resource-logs` for `azure:resource`
 - **DataManagerInputId**: The ID of the Splunk Cloud Data Manager input. For example, `X99XXXXX-111X-222X-X333-XX789X789X789X`.
@@ -59,9 +61,25 @@ surrounded with `%` symbols. For example, `%EventHubConnection%`.
 ```
 
 ### Run tests
+#### Azure Function Tests
 From the project root:
 ```bash
 > npm test
+```
+
+#### ARM Template Tests
+Tests for ARM templates need to be run in Powershell.
+
+Run validation and unit tests on ARM templates from the project root:
+```powershell
+Import-Module ./Test-ARMTemplates.ps1
+Test-ARMTemplates -TemplateFolder ./deploy -UnitTest
+```
+
+Run individual test script file from deployment tests directory:
+```powershell
+$container = New-PesterContainer -Path <test file> -Data @{ SCDMInputId=<SCDMId> }
+$testResult = Invoke-Pester -Container $container
 ```
 
 ### Deploy

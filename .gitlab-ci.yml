@@ -46,4 +46,4 @@ arm-validate:
   image:
     name: "mcr.microsoft.com/powershell:latest"
   script:
-    - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy"
+    - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId $AZURE_ID -AzureTenant $AZURE_TENANT -AzureToken $AZURE_TOKEN"
