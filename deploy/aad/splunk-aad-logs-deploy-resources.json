@@ -259,8 +259,10 @@
               "name": "[variables('storageAccountName')]",
               "tags": "[parameters('resourceTags')]",
               "location": "[resourceGroup().location]",
-              "minimumTlsVersion": {
-                "value": "TLS1_2"
+              "properties": {
+                "minimumTlsVersion": {
+                  "value": "TLS1_2"
+                }
               },
               "sku": {
                 "name": "Standard_LRS"
