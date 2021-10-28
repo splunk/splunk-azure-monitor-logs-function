@@ -6,6 +6,10 @@
       "type": "string",
       "defaultValue": ""
     },
+    "existingResourceGroupName": {
+      "type": "string",
+      "defaultValue": ""
+    },
     "altFunctionName": {
       "type": "string",
       "defaultValue": ""
@@ -40,10 +44,14 @@
     },
     "servicePrincipalObjectId": {
       "type": "string"
+    },
+    "resourceTags": {
+      "type": "object",
+      "defaultValue": {}
     }
   },
   "variables": {
-    "resourceGroupName": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]",
+    "resourceGroupName": "[if(equals(parameters('existingResourceGroupName'), ''), concat('SplunkDMDataIngest-', parameters('scdmInputId')), parameters('existingResourceGroupName'))]",
     "resourceDeployment": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]"
   },
   "resources": [
@@ -52,6 +60,8 @@
       "apiVersion": "2021-04-01",
       "location": "[parameters('region')]",
       "name": "[variables('resourceGroupName')]",
+      "tags": "[parameters('resourceTags')]",
+      "condition":"[equals(parameters('existingResourceGroupName'), '')]",
       "properties": {}
     },
     {
@@ -100,6 +110,9 @@
           },
           "servicePrincipalObjectId": {
             "value": "[parameters('servicePrincipalObjectId')]"
+          },
+          "resourceTags": {
+            "value": "[parameters('resourceTags')]"
           }
         },
         "template": {
@@ -138,6 +151,9 @@
             },
             "servicePrincipalObjectId": {
               "type": "string"
+            },
+            "resourceTags": {
+              "type": "object"
             }
           },
           "variables": {
@@ -155,6 +171,7 @@
           "resources": [
             {
               "name": "[parameters('scdmInputId')]",
+              "tags": "[parameters('resourceTags')]",
               "type": "Microsoft.Authorization/roleDefinitions",
               "apiVersion": "2018-07-01",
               "properties": {
@@ -184,6 +201,7 @@
             {
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleAssignments",
+              "tags": "[parameters('resourceTags')]",
               "apiVersion": "2021-04-01-preview",
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
@@ -199,6 +217,7 @@
               "type": "Microsoft.Storage/storageAccounts",
               "apiVersion": "2021-04-01",
               "name": "[variables('logsStorageAccountName')]",
+              "tags": "[parameters('resourceTags')]",
               "location": "[parameters('region')]",
               "sku": {
                 "name": "Standard_LRS"
@@ -212,6 +231,7 @@
               "type": "Microsoft.Storage/storageAccounts",
               "apiVersion": "2021-04-01",
               "name": "[variables('storageAccountName')]",
+              "tags": "[parameters('resourceTags')]",
               "location": "[parameters('region')]", 
               "sku": {
                 "name": "Standard_LRS"
@@ -242,6 +262,7 @@
             },
             {
               "type": "Microsoft.EventHub/namespaces",
+              "tags": "[parameters('resourceTags')]",
               "apiVersion": "2021-01-01-preview",
               "name": "[variables('eventHubNamespaceName')]",
               "location": "[parameters('region')]",
@@ -330,6 +351,7 @@
             },
             {
               "type": "Microsoft.Web/serverfarms",
+              "tags": "[parameters('resourceTags')]",
               "apiVersion": "2020-12-01",
               "name": "[variables('hostingPlanName')]",
               "location": "[parameters('region')]",
@@ -367,6 +389,7 @@
             {
               "name": "[variables('functionName')]",
               "type": "Microsoft.Web/sites",
+              "tags": "[parameters('resourceTags')]",
               "apiVersion": "2020-12-01",
               "location": "[parameters('region')]",
               "kind": "functionapp",
