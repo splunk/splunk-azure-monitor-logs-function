@@ -205,7 +205,9 @@
               },
               "kind": "StorageV2",
               "properties": {
-                "accessTier": "Cool"
+                "accessTier": "Cool",
+                "allowBlobPublicAccess": false,
+                "minimumTlsVersion": "TLS1_2"
               }
             },
             {
@@ -216,7 +218,11 @@
               "sku": {
                 "name": "Standard_LRS"
               },
-              "kind": "StorageV2"
+              "kind": "StorageV2",
+              "properties": {
+                "allowBlobPublicAccess": false,
+                "minimumTlsVersion": "TLS1_2"
+              }
             },
             {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
