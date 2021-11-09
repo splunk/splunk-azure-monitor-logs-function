@@ -220,7 +220,6 @@
               },
               "kind": "StorageV2",
               "properties": {
-                "accessTier": "Cool",
                 "minimumTlsVersion": "TLS1_2",
                 "allowBlobPublicAccess": false
               }
