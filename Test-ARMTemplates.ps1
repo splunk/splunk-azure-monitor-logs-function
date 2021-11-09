@@ -59,6 +59,9 @@ function Test-ARMTemplates {
                 $failures = $testResults | Where-Object { -not $_.Passed }
                 $failCount = ($failures | Measure-Object).Count
                 Write-Information -MessageData "Test failures: $failCount" -InformationAction Continue
+                if ($failCount -ne 0) {
+                    $failures | Format-Table -Property Errors, Name, Group | Out-String | Write-Information -InformationAction Continue
+                }
                 return $failCount
             }
         }
@@ -90,6 +93,9 @@ function Test-ARMTemplates {
                     $failCount += $failed
                     Write-Information -MessageData "Tests Passed: $passed" -InformationAction Continue
                     Write-Information -MessageData "Tests Failed: $failed" -InformationAction Continue
+                    if ($failed -ne 0) {
+                        $testResult.Failed | Format-Table -Property Name, Result, ErrorRecord | Out-String | Write-Information -InformationAction Continue
+                    }
                 }
 
                 return $failCount
