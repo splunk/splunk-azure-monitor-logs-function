@@ -7,14 +7,10 @@ Param(
     [Parameter(Mandatory = $false)]
     [string]
     $Location = "East US",
-    # RepoUrl
+    # FunctionPackageURL
     [Parameter(Mandatory = $false)]
     [string]
-    $RepoUrl = "http://localhost/",
-    # RepoBranch
-    [Parameter(Mandatory = $false)]
-    [string]
-    $RepoBranch = "main",
+    $FunctionPackageURL = "http://localhost/",
     # Service Principal Object ID
     [Parameter(Mandatory = $false)]
     [string]
@@ -41,7 +37,7 @@ Describe "Azure ARM Template Unit Tests" {
             -Name "UnitTestDeployment" `
             -Location $Location `
             -TemplateFile $TemplateFile `
-            -TemplateParameterObject @{hecUrl = "http://localhost/"; hecToken = "i-am-a-token"; region = $Location; scdmInputId = $SCDMInputId; servicePrincipalObjectId = $ServicePrincipalObjectId; repoUrl = $RepoUrl; repoBranch = $RepoBranch }
+            -TemplateParameterObject @{hecUrl = "http://localhost/"; hecToken = "i-am-a-token"; region = $Location; scdmInputId = $SCDMInputId; servicePrincipalObjectId = $ServicePrincipalObjectId; functionPackageURL = $FunctionPackageURL; }
     }
 
     Context "Deployment Successful" {
@@ -209,6 +205,7 @@ Describe "Azure ARM Template Unit Tests" {
             $appServicePlans[0].After["name"].Value | Should -Be $hostingPlanName
             $appServicePlans[0].After["kind"].Value | Should -Be "functionapp"
             $appServicePlans[0].After["sku"]["name"].Value | Should -Be "Y1"
+            $appServicePlans[0].After["properties"]["reserved"].Value | Should -Be $true
         }
 
         It "Function Created" {
@@ -217,20 +214,7 @@ Describe "Azure ARM Template Unit Tests" {
             $functions | Should -HaveCount 1
             $functions[0].ChangeType | Should -Be "Create"
             $functions[0].After["name"].Value | Should -Be $functionName
-            $functions[0].After["kind"].Value | Should -Be "functionapp"
-        }
-
-        It "Source Control Created" {
-            $srcControls = $resourceMap['Microsoft.Web/sites/sourcecontrols']
-
-            $srcControls | Should -HaveCount 1
-            $srcControls[0].ChangeType | Should -Be "Create"
-            $srcControls[0].After["name"].Value | Should -Be "web"
-
-            $properties = $srcControls[0].After["properties"]
-            $properties["repoUrl"].Value | Should -Be $RepoUrl
-            $properties["branch"].Value | Should -Be $RepoBranch
-            $properties["isManualIntegration"].Value | Should -BeTrue
+            $functions[0].After["kind"].Value | Should -Be "functionapp,linux"
         }
     }
 }
