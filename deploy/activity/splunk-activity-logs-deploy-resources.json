@@ -225,6 +225,7 @@
               "kind": "StorageV2",
               "properties": {
                 "accessTier": "Cool",
+                "minimumTlsVersion": "TLS1_2",
                 "allowBlobPublicAccess": false
               }
             },
@@ -239,6 +240,7 @@
               },
               "kind": "StorageV2",
               "properties": {
+                "minimumTlsVersion": "TLS1_2",
                 "allowBlobPublicAccess": false
               }
             },
