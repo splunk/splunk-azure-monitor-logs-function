@@ -10,11 +10,15 @@
       "type": "string",
       "defaultValue": ""
     },
-    "altStorageName": {
+    "altBackupStorageName": {
       "type": "string",
       "defaultValue": ""
     },
     "altLogsStorageName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "altJobsStorageName": {
       "type": "string",
       "defaultValue": ""
     },
@@ -69,11 +73,14 @@
           "altFunctionName": {
             "value": "[parameters('altFunctionName')]"
           },
-          "altStorageName": {
-            "value": "[parameters('altStorageName')]"
+          "altBackupStorageName": {
+            "value": "[parameters('altBackupStorageName')]"
           },
           "altLogsStorageName": {
             "value": "[parameters('altLogsStorageName')]"
+          },
+          "altJobsStorageName": {
+            "value": "[parameters('altJobsStorageName')]"
           },
           "functionPackageURL": {
             "value": "[parameters('functionPackageURL')]"
@@ -104,13 +111,16 @@
             "altFunctionName": {
               "type": "string"
             },
-            "altStorageName": {
+            "altBackupStorageName": {
               "type": "string"
             },
             "altLogsStorageName": {
               "type": "string"
             },
             "functionPackageURL": {
+              "type": "string"
+            },
+            "altJobsStorageName": {
               "type": "string"
             },
             "hecToken": {
@@ -138,8 +148,9 @@
             "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkAadLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
             "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkAadLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
             "hostingPlanName": "splk-aad-logs-hosting-plan",
-            "storageAccountName": "[if(equals(parameters('altStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altStorageName'))]",
-            "logsStorageAccountName": "[if(equals(parameters('altLogsStorageName'), ''), concat('splklogstr', uniqueString(parameters('scdmInputId'))), parameters('altLogsStorageName'))]"
+            "backupStorageAccountName": "[if(equals(parameters('altBackupStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altBackupStorageName'))]",
+            "logsStorageAccountName": "[if(equals(parameters('altLogsStorageName'), ''), concat('splklogstr', uniqueString(parameters('scdmInputId'))), parameters('altLogsStorageName'))]",
+            "jobsStorageAccountName": "[if(equals(parameters('altJobsStorageName'), ''), concat('splkjobstr', uniqueString(parameters('scdmInputId'))), parameters('altJobsStorageName'))]"
           },
           "resources": [
             {
@@ -202,7 +213,7 @@
             {
               "type": "Microsoft.Storage/storageAccounts",
               "apiVersion": "2021-04-01",
-              "name": "[variables('storageAccountName')]",
+              "name": "[variables('backupStorageAccountName')]",
               "location": "[parameters('region')]",
               "sku": {
                 "name": "Standard_LRS"
@@ -216,9 +227,46 @@
             {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
               "apiVersion": "2017-05-01-preview",
-              "name": "[concat(variables('storageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
+              "name": "[concat(variables('backupStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
               "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
+              ],
+              "properties": {
+                "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]",
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 60,
+                      "enabled": true
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-04-01",
+              "name": "[variables('jobsStorageAccountName')]",
+              "location": "[parameters('region')]",
+              "sku": {
+                  "name": "Standard_LRS",
+                  "tier": "Standard"
+              },
+              "kind": "Storage",
+              "properties": {
+                "allowBlobPublicAccess": false,
+                "minimumTlsVersion": "TLS1_2"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
+              "apiVersion": "2017-05-01-preview",
+              "name": "[concat(variables('jobsStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
               ],
               "properties": {
@@ -368,7 +416,8 @@
               "kind": "functionapp,linux",
               "dependsOn": [
                 "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName'))]",
                 "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
               ],
               "properties": {
@@ -402,9 +451,9 @@
                       "name": "AzureWebJobsStorage",
                       "value": "[concat(
                         'DefaultEndpointsProtocol=https;AccountName=',
-                        variables('storageAccountName'),
+                        variables('jobsStorageAccountName'),
                         ';AccountKey=',
-                        listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-04-01').keys[0].value)]"
+                        listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName')), '2021-04-01').keys[0].value)]"
                     },
                     {
                       "name": "ConsumerGroupName",
@@ -426,9 +475,9 @@
                       "name": "FailedEventsStorageConnection",
                       "value": "[concat(
                         'DefaultEndpointsProtocol=https;AccountName=',
-                        variables('storageAccountName'),
+                        variables('backupStorageAccountName'),
                         ';AccountKey=',
-                        listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2021-04-01').keys[0].value)]"
+                        listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName')), '2021-04-01').keys[0].value)]"
                     },
                     {
                       "name": "HecUrl",
