@@ -16,6 +16,7 @@
 import { Context, ContextBindings, Logger } from "@azure/functions"
 import axios, { AxiosInstance } from "axios"
 import * as moment from "moment"
+const {gzip} = require('node-gzip');
 
 const DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000;
 
@@ -96,7 +97,8 @@ function getHecParams(): HecParams {
  */
 function createHecHttpClient(log: Logger, hecUrl: string, hecToken: string, timeout: number): AxiosInstance {
   const headers = {
-    'Authorization': `Splunk ${hecToken}`
+    'Authorization': `Splunk ${hecToken}`,
+    'Content-Encoding': 'gzip',
   };
   log.info(`Creating HTTP client baseUrl='${hecUrl}' headers='${JSON.stringify(headers)}'`);
   return axios.create({
@@ -228,7 +230,8 @@ function batchSerializedEvents(log: Logger, serializedEvents: string[], batchSiz
  */
 async function pushToHec(log: Logger, hecHttpClient: AxiosInstance, payload: string) {
   log.verbose(`Push to HEC with Payload=${payload}`);
-  const response = await hecHttpClient.post('services/collector/event', payload);
+  const compressedPayload = await gzip(payload);
+  const response = await hecHttpClient.post('services/collector/event', compressedPayload);
   log.verbose(`Pushed to HEC and got response with Code=${response.status} Body=${JSON.stringify(response.data)}`);
 
   if (!(response.status >= 200 && response.status < 300)) {
