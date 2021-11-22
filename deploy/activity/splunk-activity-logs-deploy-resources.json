@@ -285,7 +285,7 @@
             },
             {
               "type": "Microsoft.EventHub/namespaces",
-              "apiVersion": "2021-01-01-preview",
+              "apiVersion": "2021-11-01",
               "name": "[variables('eventHubNamespaceName')]",
               "location": "[parameters('region')]",
               "properties": {
@@ -299,7 +299,7 @@
               "resources": [
                 {
                   "type": "eventhubs",
-                  "apiVersion": "2021-01-01-preview",
+                  "apiVersion": "2021-11-01",
                   "name": "[variables('eventHubName')]",
                   "properties": {
                     "partitionCount": 32
@@ -309,7 +309,7 @@
                   ],
                   "resources": [
                     {
-                      "apiVersion": "2021-01-01-preview",
+                      "apiVersion": "2021-11-01",
                       "type": "consumergroups",
                       "name": "[variables('consumerGroupName')]",
                       "dependsOn": [
@@ -321,7 +321,7 @@
                 },
                 {
                   "type": "AuthorizationRules",
-                  "apiVersion": "2021-01-01-preview",
+                  "apiVersion": "2021-11-01",
                   "name": "[variables('eventHubAuthRuleListen')]",
                   "dependsOn": [
                     "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
@@ -335,7 +335,7 @@
                 },
                 {
                   "type": "AuthorizationRules",
-                  "apiVersion": "2021-01-01-preview",
+                  "apiVersion": "2021-11-01",
                   "name": "[variables('eventHubAuthRuleSend')]",
                   "dependsOn": [
                     "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
@@ -469,7 +469,7 @@
                     },
                     {
                       "name": "EventHubConnection",
-                      "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleListen')), '2021-01-01-preview').primaryConnectionString]"
+                      "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleListen')), '2021-11-01').primaryConnectionString]"
                     },
                     {
                       "name": "FailedEventsStorageConnection",
