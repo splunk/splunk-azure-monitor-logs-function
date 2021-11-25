@@ -14,9 +14,11 @@ describe('Azure Monitor Logs Process', function () {
 
     this.beforeEach(() => {
       sandbox.stub(process, 'env').value(mockEnv);
+      const clientInstance = axios.create();
       httpClientStub = sandbox.stub(axios, 'create');
       postStub = sandbox.stub();
-      httpClientStub.returns({ post: postStub });
+      clientInstance.post = postStub;
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
     });
 

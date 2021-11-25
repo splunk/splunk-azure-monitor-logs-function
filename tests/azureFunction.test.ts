@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { expect } from 'chai';
 import { SinonStub } from 'sinon';
 
@@ -11,10 +11,13 @@ describe('Azure Monitor Logs Process', function () {
   describe('Push events', () => {
     let httpClientStub: SinonStub;
     let postStub: SinonStub;
+    let clientInstance: AxiosInstance;
 
     this.beforeEach(() => {
+      clientInstance = axios.create();
       httpClientStub = sandbox.stub(axios, 'create');
       postStub = sandbox.stub();
+      clientInstance.post = postStub;
       sandbox.stub(process, 'env').value(mockEnv);
     });
 
@@ -23,7 +26,7 @@ describe('Azure Monitor Logs Process', function () {
     });
 
     it('should create httpClient with correct params', async () => {
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
@@ -44,10 +47,10 @@ describe('Azure Monitor Logs Process', function () {
       dateStub.onCall(0).returns(new Date(1633453028000));
       dateStub.onCall(1).returns(new Date(1633453028100));
 
-      // FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload / Number of batches
-      const timeout = ((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100)/1;
+      // ((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload) / RetryCount) / Number of batches
+      const timeout = (((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100) / 3) / 1;
 
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
 
@@ -68,7 +71,7 @@ describe('Azure Monitor Logs Process', function () {
 
       const timeout = 1;
 
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
 
@@ -88,10 +91,10 @@ describe('Azure Monitor Logs Process', function () {
       dateStub.onCall(0).returns(new Date(1633453028000));
       dateStub.onCall(1).returns(new Date(1633453028100));
 
-      // FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload / Number of batches
-      const timeout = ((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100)/2;
+      // ((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload) / RetryCount) / Number of batches
+      const timeout = (((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100) / 3) / 2;
 
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
 
@@ -105,7 +108,7 @@ describe('Azure Monitor Logs Process', function () {
     });
 
     it('should make correct POST request', async () => {
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
@@ -132,7 +135,7 @@ describe('Azure Monitor Logs Process', function () {
 
     it('should batch events', async () => {
       sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(400);
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
       const eventHubMessages = [

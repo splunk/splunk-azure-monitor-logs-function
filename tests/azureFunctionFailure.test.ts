@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { expect } from 'chai';
 import { SinonStub } from 'sinon';
 
@@ -11,10 +11,13 @@ describe('Azure Monitor Logs Process', function () {
   describe('Failed Events', () => {
     let httpClientStub: SinonStub;
     let postStub: SinonStub;
+    let clientInstance: AxiosInstance;
 
     this.beforeEach(() => {
+      clientInstance = axios.create();
       httpClientStub = sandbox.stub(axios, 'create');
       postStub = sandbox.stub();
+      clientInstance.post = postStub;
       sandbox.stub(process, 'env').value(mockEnv);
       splunkContext.bindings = {};
     });
@@ -110,7 +113,7 @@ describe('Azure Monitor Logs Process', function () {
     });
 
     it('should save batch on hec bad response', async () => {
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 500 });
 
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
@@ -127,7 +130,7 @@ describe('Azure Monitor Logs Process', function () {
 
     it('should save multiple batches on hec bad response', async () => {
       sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(1);
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 500 });
 
       const eventHubMessages = [
@@ -164,7 +167,7 @@ describe('Azure Monitor Logs Process', function () {
 
     it('should save select batches on select hec bad responses', async () => {
       sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(1);
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub
         .onFirstCall()
         .resolves({ status: 200 })

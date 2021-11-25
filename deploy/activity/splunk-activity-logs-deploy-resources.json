@@ -453,7 +453,7 @@
                           'DefaultEndpointsProtocol=https;AccountName=',
                           variables('jobsStorageAccountName'),
                           ';AccountKey=',
-                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName')), '2021-04-01').keys[0].value)],"
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName')), '2021-04-01').keys[0].value)]"
                     },
                     {
                       "name": "ConsumerGroupName",

@@ -14,7 +14,8 @@
  * under the License.
  */
 import { Context, ContextBindings, Logger } from "@azure/functions"
-import axios, { AxiosInstance } from "axios"
+import axios, { AxiosError, AxiosInstance } from "axios"
+import axiosRetry from "axios-retry"
 import * as moment from "moment"
 
 const DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000;
@@ -24,6 +25,7 @@ const FUNC_TIMEOUT = 10 * 60 * 1000;
 const INIT_TIME = 2 * 60 * 1000;
 const WRITE_TIME = 30 * 1000;
 const BUFFER = 30 * 1000;
+const MAX_RETRIES = 2;
 
 /**
  * Entrypoint for function that handles a list of events.
@@ -32,7 +34,7 @@ const BUFFER = 30 * 1000;
  * an array of logs.
  */
 const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
-  {log, bindings}: SplunkContext,
+  { log, bindings }: SplunkContext,
   eventHubMessages: any[]): Promise<void> {
 
   log.verbose(`Starting function with environment ${JSON.stringify(process.env)}`);
@@ -40,7 +42,7 @@ const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
     log.info(`Handling ${eventHubMessages.length} event(s)`);
     const startTime = Date.now();
     const payloads = buildHecPayloads(log, eventHubMessages);
-    const {hecUrl, hecToken} = getHecParams();
+    const { hecUrl, hecToken } = getHecParams();
     const timeToBuild = Date.now() - startTime;
 
     /**
@@ -48,7 +50,7 @@ const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
      * In the event eventHubMessages is empty, payloads.length = 0. Set a minimum of 1 to prevent divide by zero error
      * This will cause the HEC request to fail immediately and be written to storage
      */
-    const timeout = Math.max((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - timeToBuild), 1) / Math.max(1, payloads.length);
+    const timeout = Math.max(((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - timeToBuild) / (MAX_RETRIES + 1)), 1) / Math.max(1, payloads.length);
 
     const hecHttpClient = createHecHttpClient(log, hecUrl, hecToken, timeout);
 
@@ -84,7 +86,33 @@ function getHecParams(): HecParams {
     throw new Error('HecToken is not defined');
   }
 
-  return {hecUrl, hecToken};
+  return { hecUrl, hecToken };
+}
+
+/**
+ * Return if error can be resolved by a retry
+ * @param error error returned by Axios Client
+ * @returns error can be retried
+ */
+function isRetryableError(error: AxiosError): boolean {
+  return (
+    axiosRetry.isNetworkError(error) ||
+    error.code === 'ENOTFOUND' ||   // ENOTFOUND is not considered a retryable error by axios.
+                                    // Intermittent ENOTFOUND errors were observed during performance tests due to high load/Node issues
+    (error.response?.status == 408 || // HEC Request Timeout
+      error.response?.status == 429 || // HEC Throttling
+      (
+        error.response != undefined &&
+        error.response.status >= 500 &&
+        error.response.status <= 599
+      )
+    )
+  );
+}
+
+function getRetryDelay(retryCount: number, error: AxiosError): number {
+  // No delay unless throttling occurs
+  return (error.response?.status == 429) ? axiosRetry.exponentialDelay(retryCount) : 0;
 }
 
 /**
@@ -99,12 +127,20 @@ function createHecHttpClient(log: Logger, hecUrl: string, hecToken: string, time
     'Authorization': `Splunk ${hecToken}`
   };
   log.info(`Creating HTTP client baseUrl='${hecUrl}' headers='${JSON.stringify(headers)}'`);
-  return axios.create({
+  const client = axios.create({
     baseURL: hecUrl,
     headers,
     timeout,
     validateStatus: () => true
   });
+
+  axiosRetry(client, {
+    retries: MAX_RETRIES,
+    retryCondition: isRetryableError,
+    retryDelay: getRetryDelay
+  });
+
+  return client;
 }
 
 /**
