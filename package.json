@@ -8,7 +8,9 @@
     "prestart": "npm run build && func extensions install",
     "start:host": "func start",
     "start": "npm-run-all --parallel start:host watch",
-    "test": "mocha -r ts-node/register 'tests/**/*.test.ts'"
+    "test": "mocha -r ts-node/register 'tests/**/*.test.ts'",
+    "package": "zip -r azure-monitor-logs-azure-function-${npm_package_version}.zip azure_monitor_logs_processor_func/ dist/ node_modules package.json package-lock.json LICENCE NOTICE host.json",
+    "get-version": "echo $npm_package_version"
   },
   "description": "Azure Function",
   "devDependencies": {

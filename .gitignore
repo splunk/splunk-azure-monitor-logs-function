@@ -68,3 +68,6 @@ coverage/
 # ARM test toolkit
 arm-ttk-latest/
 arm-ttk-latest.zip
+
+# Zipped packages
+*.zip

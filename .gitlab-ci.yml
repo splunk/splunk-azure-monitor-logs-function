@@ -1,6 +1,6 @@
 # Image running node 14, the runtime version Azure Function uses for TypeScript
 # https://docs.microsoft.com/en-us/azure/azure-functions/functions-versions
-image: node:14
+image: repo.splunk.com/node:14
 
 # This folder is cached between builds
 # https://docs.gitlab.com/ee/ci/yaml/index.html#cache
@@ -15,6 +15,12 @@ include:
   - project: 'prodsec/scp-scanning/gitlab-checkmarx'
     ref: latest
     file: '/templates/.sast_scan.yml'
+
+stages:
+  - test
+  - deploy-test
+  - deploy-dev
+  - deploy-prd
 
 sast-scanner:
   stage: test
@@ -47,3 +53,44 @@ arm-validate:
     name: "mcr.microsoft.com/powershell:latest"
   script:
     - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId $AZURE_ID -AzureTenant $AZURE_TENANT -AzureToken $AZURE_TOKEN"
+
+.build-and-package: &build-and-package
+  - npm install
+  - npm run build
+  - npm prune --production
+  - apt update
+  - apt install zip
+  - npm run package
+
+.upload-to-azure: &upload-to-azure
+  - curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+  - az login --service-principal -u $AZURE_ID -p $AZURE_TOKEN --tenant $AZURE_TENANT
+  - az account set --subscription $AZURE_SUBSCRIPTION
+  - PACKAGE_VERSION=`npm --loglevel silent run get-version`
+  - az storage blob upload --account-name $AZURE_STORAGE_ACCOUNT --container-name $AZURE_STORAGE_CONTAINER --file azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip --name ${CI_COMMIT_BRANCH}/${CI_COMMIT_SHORT_SHA}/azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip
+  - az storage blob generate-sas --account-name splktestazurefndepl --container-name azurefunctionzip --expiry `date -d "+30 days" +%Y-%m-%dT%H:%MZ` --name ${CI_COMMIT_BRANCH}/${CI_COMMIT_SHORT_SHA}/azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip --permissions r --full-uri
+
+deploy-test:
+  stage: deploy-test
+  when: manual
+  script:
+    - *build-and-package
+    - *upload-to-azure
+
+deploy-dev:
+  stage: deploy-dev
+  only:
+    - develop
+    - main
+  script:
+    - *build-and-package
+    - *upload-to-azure
+deploy-prd:
+  stage: deploy-prd
+  when: manual
+  script:
+    - *build-and-package
+    - eval $(creds-helper init)
+    - eval $(creds-helper artifactory --eval artifactory:v2/cloud/role/azure-monitor-logs-azure-function-writer-role)
+    - PACKAGE_VERSION=`npm --loglevel silent run get-version`
+    - curl -u $ARTIFACTORY_AUTHORIZATION -X PUT $ARTIFACTORY_BASE_URL/prod-local/cloud-data-collection/azure-monitor-logs-azure-function-versions/${PACKAGE_VERSION}/${CI_COMMIT_SHORT_SHA}/azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip -T azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip
