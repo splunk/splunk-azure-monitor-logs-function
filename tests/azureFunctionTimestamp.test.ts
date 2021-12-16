@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { expect } from 'chai';
+import { ungzip } from 'node-gzip';
 import { SinonStub } from 'sinon';
+import { InputType } from 'zlib';
 
 import azureMonitorLogsProcessorFunc from '../azure_monitor_logs_processor_func/index';
 import { context, mockEnv, sandbox } from './common';
@@ -37,7 +39,7 @@ describe('Azure Monitor Logs Process', function () {
       expect(postStub.calledOnce).is.true;
       expect(postStub.firstCall.args.length).to.equal(2);
 
-      const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
+      const splunkEvent = await uncompressPayload(postStub.firstCall.args[1]);
       expect(splunkEvent).to.include.keys('time');
       expect(splunkEvent.time).to.equal(1623270037603);
     });
@@ -53,7 +55,7 @@ describe('Azure Monitor Logs Process', function () {
       expect(postStub.calledOnce).is.true;
       expect(postStub.firstCall.args.length).to.equal(2);
 
-      const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
+      const splunkEvent = await uncompressPayload(postStub.firstCall.args[1]);
       expect(splunkEvent).to.include.keys('time');
       expect(splunkEvent.time).to.equal(1623270037000);
     });
@@ -66,7 +68,7 @@ describe('Azure Monitor Logs Process', function () {
       expect(postStub.calledOnce).is.true;
       expect(postStub.firstCall.args.length).to.equal(2);
 
-      const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
+      const splunkEvent = await uncompressPayload(postStub.firstCall.args[1]);
       expect(splunkEvent).to.include.keys('time');
       expect(splunkEvent.time).to.equal(1623288037603);
     });
@@ -79,8 +81,12 @@ describe('Azure Monitor Logs Process', function () {
       expect(postStub.calledOnce).is.true;
       expect(postStub.firstCall.args.length).to.equal(2);
 
-      const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
+      const splunkEvent = await uncompressPayload(postStub.firstCall.args[1]);
       expect(splunkEvent).to.not.include.keys('time');
     });
   });
 });
+
+async function uncompressPayload(payload: InputType): Promise<any> {
+  return JSON.parse((await ungzip(payload)).toString());
+}

@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { expect } from 'chai';
+import { ungzip } from 'node-gzip';
 import { SinonStub } from 'sinon';
 
 import azureMonitorLogsProcessorFunc from '../azure_monitor_logs_processor_func/index';
@@ -37,7 +38,8 @@ describe('Azure Monitor Logs Process', function () {
       expect(httpClientStub.firstCall.args[0]).to.include.keys('baseURL', 'headers', 'timeout');
       expect(httpClientStub.firstCall.args[0].baseURL).to.equal(mockEnv.HecUrl);
       expect(httpClientStub.firstCall.args[0].headers).to.deep.equal({
-        Authorization: `Splunk ${mockEnv.HecToken}`
+        Authorization: `Splunk ${mockEnv.HecToken}`,
+        "Content-Encoding": "gzip"
       });
     });
 
@@ -129,7 +131,7 @@ describe('Azure Monitor Logs Process', function () {
           data_manager_input_id: 'mock-input-id',
         },
       });
-      const actualPayload = postStub.firstCall.args[1];
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
     });
 
@@ -159,13 +161,17 @@ describe('Azure Monitor Logs Process', function () {
       ];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
+      // Uncompress zip payload
+      const firstCallUncompressedEvent = (await ungzip(postStub.firstCall.args[1])).toString();
+      const secondCallUncompressedEvent = (await ungzip(postStub.secondCall.args[1])).toString();
+
       expect(postStub.callCount).to.equal(2);
       expect(postStub.firstCall.args.length).to.equal(2);
-      expect(postStub.firstCall.args[1]).to.contain('batch_1');
-      expect(postStub.firstCall.args[1]).to.not.contain('batch_2');
+      expect(firstCallUncompressedEvent).to.contain('batch_1');
+      expect(firstCallUncompressedEvent).to.not.contain('batch_2');
       expect(postStub.secondCall.args.length).to.equal(2);
-      expect(postStub.secondCall.args[1]).to.not.contain('batch_1');
-      expect(postStub.secondCall.args[1]).to.contain('batch_2');
+      expect(secondCallUncompressedEvent).to.not.contain('batch_1');
+      expect(secondCallUncompressedEvent).to.contain('batch_2');
     });
   });
 });
