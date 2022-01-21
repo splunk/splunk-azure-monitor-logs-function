@@ -23,7 +23,8 @@
       "defaultValue": ""
     },
     "functionPackageURL": {
-      "type": "string"
+      "type": "string",
+      "defaultValue": "https://download.splunk.com/products/splunk-azure-monitor-logs-azure-function/releases/0.3.0/linux/azure-monitor-logs-azure-function-0.3.0.zip"
     },
     "hecToken": {
       "type": "securestring"
