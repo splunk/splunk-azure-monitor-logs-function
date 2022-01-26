@@ -93,4 +93,4 @@ deploy-prd:
     - eval $(creds-helper init)
     - eval $(creds-helper artifactory --eval artifactory:v2/cloud/role/azure-monitor-logs-azure-function-writer-role)
     - PACKAGE_VERSION=`npm --loglevel silent run get-version`
-    - curl -u $ARTIFACTORY_AUTHORIZATION -X PUT $ARTIFACTORY_BASE_URL/prod-local/cloud-data-collection/azure-monitor-logs-azure-function-versions/${PACKAGE_VERSION}/${CI_COMMIT_SHORT_SHA}/azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip -T azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip
+    - curl -u $ARTIFACTORY_AUTHORIZATION -X PUT $ARTIFACTORY_BASE_URL/generic/cloud-data-collection/azure-monitor-logs-azure-function-versions/${PACKAGE_VERSION}/${CI_COMMIT_SHORT_SHA}/azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip -T azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip
