@@ -51,7 +51,9 @@
   },
   "variables": {
     "resourceGroupName": "[if(equals(parameters('existingResourceGroupName'), ''), concat('SplunkDMDataIngest-', parameters('scdmInputId')), parameters('existingResourceGroupName'))]",
-    "resourceDeployment": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]"
+    "resourceDeployment": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]",
+    "scdmInputTag": { "ScdmInputId": "[parameters('scdmInputId')]" },
+    "allResourceTags": "[union(variables('scdmInputTag'), parameters('resourceTags'))]"
   },
   "resources": [
     {
@@ -59,13 +61,13 @@
       "apiVersion": "2021-04-01",
       "location": "[parameters('region')]",
       "name": "[variables('resourceGroupName')]",
-      "tags": "[parameters('resourceTags')]",
+      "tags": "[union(variables('allResourceTags'), createObject('ScdmDeletionOrder', 10))]",
       "condition":"[equals(parameters('existingResourceGroupName'), '')]",
       "properties": {}
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "tags": "[parameters('resourceTags')]",
+      "tags": "[union(variables('allResourceTags'), createObject('ScdmDeletionOrder', 9))]",
       "apiVersion": "2021-04-01",
       "name": "[variables('resourceDeployment')]",
       "resourceGroup": "[variables('resourceGroupName')]",
@@ -78,6 +80,9 @@
           "scope": "Inner"
         },
         "parameters": {
+          "allResourceTags": {
+            "value": "[variables('allResourceTags')]"
+          },
           "altEventHubNamespaceName": {
             "value": "[parameters('altEventHubNamespaceName')]"
           },
@@ -110,15 +115,15 @@
           },
           "servicePrincipalObjectId": {
             "value": "[parameters('servicePrincipalObjectId')]"
-          },
-          "resourceTags": {
-            "value": "[parameters('resourceTags')]"
           }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
           "contentVersion": "1.0.0.0",
           "parameters": {
+            "allResourceTags": {
+              "type": "object"
+            },
             "altEventHubNamespaceName": {
               "type": "string"
             },
@@ -151,9 +156,6 @@
             },
             "servicePrincipalObjectId": {
               "type": "string"
-            },
-            "resourceTags": {
-              "type": "object"
             }
           },
           "variables": {
@@ -173,7 +175,7 @@
             {
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleDefinitions",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 7))]",
               "apiVersion": "2018-07-01",
               "properties": {
                 "description": "This role will allow Splunk Data Manager to read the metadata of your Azure Subscription and Azure resources created during this ARM deployment (such as the Event Hub Namespace and Storage Account) so that Splunk can make recommendations during onboarding.",
@@ -202,7 +204,7 @@
             {
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleAssignments",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 8))]",
               "apiVersion": "2021-04-01-preview",
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
@@ -216,7 +218,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 6))]",
               "apiVersion": "2021-04-01",
               "name": "[variables('logsStorageAccountName')]",
               "location": "[parameters('region')]",
@@ -232,7 +234,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 4))]",
               "apiVersion": "2021-04-01",
               "name": "[variables('backupStorageAccountName')]",
               "location": "[parameters('region')]",
@@ -247,7 +249,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[parameters('allResourceTags')]",
               "apiVersion": "2017-05-01-preview",
               "name": "[concat(variables('backupStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
               "dependsOn": [
@@ -270,7 +272,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 3))]",
               "apiVersion": "2021-04-01",
               "name": "[variables('jobsStorageAccountName')]",
               "location": "[parameters('region')]",
@@ -286,7 +288,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[parameters('allResourceTags')]",
               "apiVersion": "2017-05-01-preview",
               "name": "[concat(variables('jobsStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
               "dependsOn": [
@@ -309,7 +311,7 @@
             },
             {
               "type": "Microsoft.EventHub/namespaces",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 5))]",
               "apiVersion": "2021-11-01",
               "name": "[variables('eventHubNamespaceName')]",
               "location": "[parameters('region')]",
@@ -376,7 +378,7 @@
             },
             {
               "type": "Microsoft.EventHub/namespaces/providers/diagnosticSettings",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[parameters('allResourceTags')]",
               "apiVersion": "2017-05-01-preview",
               "name": "[concat(variables('eventHubNamespaceName'), '/Microsoft.Insights/', 'splunk-eventhub-namespace-diagnostic-settings')]",
               "dependsOn": [
@@ -399,7 +401,7 @@
             },
             {
               "type": "Microsoft.Web/serverfarms",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 2))]",
               "apiVersion": "2020-12-01",
               "name": "[variables('hostingPlanName')]",
               "location": "[parameters('region')]",
@@ -415,7 +417,7 @@
             },
             {
               "type": "Microsoft.Web/serverfarms/providers/diagnosticSettings",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[parameters('allResourceTags')]",
               "apiVersion": "2017-05-01-preview",
               "name": "[concat(variables('hostingPlanName'), '/Microsoft.Insights/', 'splunk-hosting-plan-diagnostic-settings')]",
               "dependsOn": [
@@ -439,7 +441,7 @@
             {
               "name": "[variables('functionName')]",
               "type": "Microsoft.Web/sites",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[union(parameters('allResourceTags'), createObject('ScdmDeletionOrder', 1))]",
               "apiVersion": "2020-12-01",
               "location": "[parameters('region')]",
               "kind": "functionapp,linux",
@@ -535,7 +537,7 @@
             },
             {
               "type": "Microsoft.Web/sites/providers/diagnosticSettings",
-              "tags": "[parameters('resourceTags')]",
+              "tags": "[parameters('allResourceTags')]",
               "apiVersion": "2017-05-01-preview",
               "name": "[concat(variables('functionName'), '/Microsoft.Insights/', 'splunk-azure-function-diagnostic-settings')]",
               "dependsOn": [

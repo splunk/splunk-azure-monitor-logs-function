@@ -37,7 +37,7 @@ Describe "Azure ARM Template Unit Tests" {
             -Name "UnitTestDeployment" `
             -Location $Location `
             -TemplateFile $TemplateFile `
-            -TemplateParameterObject @{hecUrl = "http://localhost/"; hecToken = "i-am-a-token"; region = $Location; scdmInputId = $SCDMInputId; servicePrincipalObjectId = $ServicePrincipalObjectId; functionPackageURL = $FunctionPackageURL; }
+            -TemplateParameterObject @{hecUrl = "http://localhost/"; hecToken = "i-am-a-token"; region = $Location; scdmInputId = $SCDMInputId; servicePrincipalObjectId = $ServicePrincipalObjectId; functionPackageURL = $FunctionPackageURL; resourceTags = @{tagKey = "tagValue"}}
     }
 
     Context "Deployment Successful" {
@@ -75,6 +75,9 @@ Describe "Azure ARM Template Unit Tests" {
 
             $name = $resourcePrefix + $SCDMInputId
             $resourceGroups[0].After["name"].Value | Should -Be $name
+            $resourceGroups[0].After["tags"]["ScdmInputId"].Value | Should -Be $SCDMInputId
+            $resourceGroups[0].After["tags"]["ScdmDeletionOrder"].Value | Should -Be "10"
+            $resourceGroups[0].After["tags"]["tagKey"].Value | Should -Be "tagValue"
         }
 
         It "Role Definitions Created" {
@@ -133,6 +136,9 @@ Describe "Azure ARM Template Unit Tests" {
             $eventhubNamespaces.Count | Should -Be 1
             $eventhubNamespaces[0].ChangeType | Should -Be "Create"
             $eventhubNamespaces[0].After["name"].Value | Should -Be $eventHubNamespaceName
+            $eventhubNamespaces[0].After["tags"]["ScdmInputId"].Value | Should -Be $SCDMInputId
+            $eventhubNamespaces[0].After["tags"]["ScdmDeletionOrder"].Value | Should -Be "5"
+            $eventhubNamespaces[0].After["tags"]["tagKey"].Value | Should -Be "tagValue"
 
             $properties = $eventhubNamespaces[0].After["properties"]
             $properties["isAutoInflateEnabled"].Value | Should -BeTrue
@@ -193,6 +199,8 @@ Describe "Azure ARM Template Unit Tests" {
             foreach ($storageAccount in $storageAccounts) {
                 $storageAccount.ChangeType | Should -Be "Create"
                 $storageAccount.After["sku"]["name"].Value | Should -Be "Standard_LRS"
+                $storageAccount.After["tags"]["ScdmInputId"].Value | Should -Be $SCDMInputId
+                $storageAccount.After["tags"]["tagKey"].Value | Should -Be "tagValue"
             }
         }
 
@@ -203,6 +211,9 @@ Describe "Azure ARM Template Unit Tests" {
             $appServicePlans[0].ChangeType | Should -Be "Create"
             $appServicePlans[0].After["name"].Value | Should -Be $hostingPlanName
             $appServicePlans[0].After["kind"].Value | Should -Be "functionapp"
+            $appServicePlans[0].After["tags"]["ScdmInputId"].Value | Should -Be $SCDMInputId
+            $appServicePlans[0].After["tags"]["ScdmDeletionOrder"].Value | Should -Be "2"
+            $appServicePlans[0].After["tags"]["tagKey"].Value | Should -Be "tagValue"
             $appServicePlans[0].After["sku"]["name"].Value | Should -Be "Y1"
             $appServicePlans[0].After["properties"]["reserved"].Value | Should -Be $true
         }
@@ -214,6 +225,9 @@ Describe "Azure ARM Template Unit Tests" {
             $functions[0].ChangeType | Should -Be "Create"
             $functions[0].After["name"].Value | Should -Be $functionName
             $functions[0].After["kind"].Value | Should -Be "functionapp,linux"
+            $functions[0].After["tags"]["ScdmInputId"].Value | Should -Be $SCDMInputId
+            $functions[0].After["tags"]["ScdmDeletionOrder"].Value | Should -Be "1"
+            $functions[0].After["tags"]["tagKey"].Value | Should -Be "tagValue"
         }
     }
 }
