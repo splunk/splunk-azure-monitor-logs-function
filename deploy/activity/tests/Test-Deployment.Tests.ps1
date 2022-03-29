@@ -113,6 +113,7 @@ Describe "Azure ARM Template Unit Tests" {
                 "Microsoft.EventHub/namespaces/eventHubs/consumergroups/read", `
                 "Microsoft.Resources/deployments/read", `
                 "Microsoft.Resources/subscriptions/resourcegroups/read", `
+                "Microsoft.Storage/storageAccounts/blobServices/containers/read", `
                 "Microsoft.Storage/storageAccounts/read", `
                 "Microsoft.Web/sites/read", `
                 "Microsoft.Web/serverfarms/read", `
