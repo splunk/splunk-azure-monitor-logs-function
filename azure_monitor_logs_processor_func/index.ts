@@ -27,6 +27,7 @@ const INIT_TIME = 2 * 60 * 1000;
 const WRITE_TIME = 30 * 1000;
 const BUFFER = 30 * 1000;
 const MAX_RETRIES = 2;
+const AZURE_LOG_LIMIT = 32000;
 
 /**
  * Entrypoint for function that handles a list of events.
@@ -60,9 +61,11 @@ const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
     for (const payload of payloads) {
       try {
         await pushToHec(log, hecHttpClient, payload);
-      } catch (error) {
-        log.error(`Failed to push to HEC.\n${error.stack ?? 'Error: ' + error}\nPayload: ${payload}`);
+      } catch (error: any) {
         failedPayloads.push(payload);
+        const errorMessage = (error.stack ?? 'Error: ' + error).slice(0, AZURE_LOG_LIMIT);
+        log.error(`Failed to push to HEC. Error: ${errorMessage}`);
+        log.error(`Failed to push to HEC. Payload: ${payload}`);
       }
     }
 
@@ -265,13 +268,25 @@ function batchSerializedEvents(log: Logger, serializedEvents: string[], batchSiz
  * @param payload the payload to send.
  */
 async function pushToHec(log: Logger, hecHttpClient: AxiosInstance, payload: string) {
-  log.verbose(`Push to HEC with Payload=${payload}`);
+  log.verbose(`Push to HEC with Payload=${payload.slice(0, AZURE_LOG_LIMIT)}`);
   const compressedPayload = await gzip(payload);
   const response = await hecHttpClient.post('services/collector/event', compressedPayload);
-  log.verbose(`Pushed to HEC and got response with Code=${response.status} Body=${JSON.stringify(response.data)}`);
+  let responseBody = '';
+
+  if(response.headers &&
+      response.headers['content-type'] &&
+      response.headers['content-type'].includes('application/json') &&
+      response.data) {
+    responseBody = JSON.stringify(response.data).slice(0, AZURE_LOG_LIMIT);
+  } else {
+    responseBody = response?.data?.slice(0, AZURE_LOG_LIMIT);
+  }
+
+  log.verbose(`Pushed to HEC. Response Code = ${response.status}`);
+  log.verbose(`Pushed to HEC. Response Body = ${responseBody}`);
 
   if (!(response.status >= 200 && response.status < 300)) {
-    throw new Error(`HEC push failed. Code=${response.status}, Body=${JSON.stringify(response.data)}`);
+    throw new Error(`HEC push failed. Code=${response.status}, Body=${responseBody}`);
   }
 }
 
@@ -283,9 +298,9 @@ async function pushToHec(log: Logger, hecHttpClient: AxiosInstance, payload: str
  * @param eventHubMessages the EventHub messages that need to be backed up.
  */
 function handleGlobalError(log: Logger, bindings: SplunkContextBindings, error: any, eventHubMessages: any[]) {
-  log.error(`Failed before pushing events. Error=${error.stack ?? error}`);
-
   bindings.failedParseEventsOutputBlob = eventHubMessages;
+
+  log.error(`Failed before pushing events. Error=${error.stack ?? error}`);
   log.info(`Backed up ${eventHubMessages.length} EventHub event(s) to blob storage`);
 }
 
