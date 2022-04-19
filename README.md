@@ -34,7 +34,6 @@ surrounded with `%` symbols. For example, `%EventHubConnection%`.
     "FailedEventsStorageConnection": "",
     "EventHubConnection":"",
     "HecUrl": "",
-    "SourceType": "",
     "Region":"",
     "ConsumerGroupName": "",
     "EventHubName": "",
@@ -49,7 +48,6 @@ surrounded with `%` symbols. For example, `%EventHubConnection%`.
 - **EventHubConnection**: Connection string for the EventHub *namespace*. See [Azure Event Hubs trigger for Azure Functions](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-event-hubs-trigger?tabs=javascript#configuration) and [Get an Event Hubs connection string](https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-get-connection-string) in the Microsoft Azure documentation.
 - **HecUrl**: The HEC URL that events are sent to. For example, `https://http-inputs-tenant-name.env.splunkcloud.com:443`. See [Set up and use HTTP Event Collector in Splunk Web](https://docs.splunk.com/Documentation/Splunk/8.2.1/Data/UsetheHTTPEventCollector) for details. Do not include `/<endpoint>` in the HEC URI because this is set by the function and not configurable. This argument is equivalent to `Splunk HEC URL` in the [Splunk Dataflow template](https://cloud.google.com/blog/products/data-analytics/connect-to-splunk-with-a-dataflow-template).
 - **HecToken**: The HEC Token associated with `HecUrl`. For example, `X99XXXXX-111X-222X-X333-XX789X789X789X`.
-- **SourceType**: The `sourcetype` set on each ingested log. For example, `azure:aad`, `azure:activity`, or `azure:resource`. This argument is also for the path to the file containing the logs that could not be delivered.
 - **Region**: The region this function sets on each ingested log. For example, `useast1`. This argument is also used for the path to the file containing the logs that could not be delivered.
 - **ConsumerGroupName**: The name of the EventHub consumer group. See [Event consumers](https://docs.microsoft.com/en-us/azure/event-hubs/event-hubs-features#event-consumers) in the Microsoft Azure documentation.
 - **EventHubName**: The name of the EventHub to receive logs from. This has a one-to-one mapping to sourcetype. For example, EventHub name of `aad-logs` for `azure:aad`, `activity-logs` for `azure:activity`, or `resource-logs` for `azure:resource`

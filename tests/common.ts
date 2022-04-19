@@ -20,7 +20,6 @@ export const context = {
 export const mockEnv = {
   HecUrl: 'mock://hec:url',
   HecToken: 'mock_hec_token',
-  SourceType: 'mock_sourcetype',
   Region: 'mock_region',
   // The namespace can contain only letters, numbers, and hyphens. The namespace must start with a
   // letter, and it must end with a letter or number.

@@ -525,10 +525,6 @@
                       "value": "INFO"
                     },
                     {
-                      "name": "SourceType",
-                      "value": "azure:activity"
-                    },
-                    {
                       "name": "Region",
                       "value": "[parameters('region')]"
                     }

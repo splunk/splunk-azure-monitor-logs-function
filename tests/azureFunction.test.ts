@@ -126,7 +126,6 @@ describe('Azure Monitor Logs Process', function () {
           Foo: 'bar',
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
-        sourcetype: 'mock_sourcetype',
         fields: {
           data_manager_input_id: 'mock-input-id',
         },
