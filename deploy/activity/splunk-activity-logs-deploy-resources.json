@@ -525,6 +525,10 @@
                       "value": "INFO"
                     },
                     {
+                      "name": "SourceType",
+                      "value": "azure:monitor:activity"
+                    },
+                    {
                       "name": "Region",
                       "value": "[parameters('region')]"
                     }

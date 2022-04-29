@@ -119,7 +119,7 @@ describe('Azure Monitor Logs Process', function () {
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
       const expectedOutputBlob = `{"event":{"Foo":"bar"},` +
         `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
-        `"fields":{"data_manager_input_id":"mock-input-id"}}`;
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}`;
 
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
@@ -152,11 +152,11 @@ describe('Azure Monitor Logs Process', function () {
 
       const expectedOutputBlob = `{"event":{"Foo":"from_msg1"},` +
         `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
-        `"fields":{"data_manager_input_id":"mock-input-id"}}` +
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}` +
         `\n` +
         `{"event":{"Foo":"from_msg2"},` +
         `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
-        `"fields":{"data_manager_input_id":"mock-input-id"}}`;
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}`;
 
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
@@ -189,7 +189,7 @@ describe('Azure Monitor Logs Process', function () {
 
       const expectedOutputBlob = `{"event":{"Foo":"from_msg2"},` +
         `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
-        `"fields":{"data_manager_input_id":"mock-input-id"}}`;
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}`;
 
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 

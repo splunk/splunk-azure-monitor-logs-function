@@ -192,6 +192,7 @@ function toSplunkEvent(record: any): SplunkEvent {
   let splunkEvent: SplunkEvent = {
     event: record,
     source: getSource(),
+    sourcetype: process.env.SourceType,
     fields: {
       data_manager_input_id: process.env.DataManagerInputId,
     },
@@ -332,6 +333,7 @@ type HecParams = {
 type SplunkEvent = {
   event: object,
   source: string,
+  sourcetype: string | undefined,
   fields: object,
   time?: number,
 };
