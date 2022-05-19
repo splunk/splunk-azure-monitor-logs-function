@@ -15,11 +15,11 @@ describe('Azure Monitor Logs Process', function () {
     let clientInstance: AxiosInstance;
 
     this.beforeEach(() => {
+      sandbox.stub(process, 'env').value(mockEnv);
       clientInstance = axios.create();
       httpClientStub = sandbox.stub(axios, 'create');
       postStub = sandbox.stub();
       clientInstance.post = postStub;
-      sandbox.stub(process, 'env').value(mockEnv);
     });
 
     this.afterEach(() => {
@@ -123,7 +123,33 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPath).to.equal(actualPath);
       const expectedPayload = JSON.stringify({
         event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        },
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should make correct POST request with eventhub metadata if enabled', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EnableEventhubMetadata').value("true");
+      sandbox.stub(splunkContext.bindingData,'systemPropertiesArray').value([{ 'lemon': 'tree' }]);
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      const expectedPayload = JSON.stringify({
+        event: {
           Foo: 'bar',
+          __eventhub_metadata: {
+            lemon: 'tree'
+          }
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
         sourcetype: 'mock_sourcetype',
@@ -173,5 +199,6 @@ describe('Azure Monitor Logs Process', function () {
       expect(secondCallUncompressedEvent).to.not.contain('batch_1');
       expect(secondCallUncompressedEvent).to.contain('batch_2');
     });
+
   });
 });

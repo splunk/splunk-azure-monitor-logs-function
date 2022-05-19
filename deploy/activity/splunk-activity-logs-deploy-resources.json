@@ -47,6 +47,10 @@
     "resourceTags": {
       "type": "object",
       "defaultValue": {}
+    },
+    "enableEventhubMetadata":{
+      "type": "string",
+      "defaultValue": "false"
     }
   },
   "variables": {
@@ -115,6 +119,9 @@
           },
           "servicePrincipalObjectId": {
             "value": "[parameters('servicePrincipalObjectId')]"
+          },
+          "enableEventhubMetadata": {
+            "value": "[parameters('enableEventhubMetadata')]"
           }
         },
         "template": {
@@ -155,6 +162,9 @@
               "type": "string"
             },
             "servicePrincipalObjectId": {
+              "type": "string"
+            },
+            "enableEventhubMetadata": {
               "type": "string"
             }
           },
@@ -531,6 +541,10 @@
                     {
                       "name": "Region",
                       "value": "[parameters('region')]"
+                    },
+                    {
+                      "name": "EnableEventhubMetadata",
+                      "value": "[parameters('enableEventhubMetadata')]"
                     }
                   ]
                 }

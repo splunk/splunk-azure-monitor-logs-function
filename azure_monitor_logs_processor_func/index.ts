@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-import { Context, ContextBindings, Logger } from "@azure/functions"
+import { Context, ContextBindings, ContextBindingData, Logger } from "@azure/functions"
 import axios, { AxiosError, AxiosInstance } from "axios"
 import axiosRetry from "axios-retry"
 import * as moment from "moment"
@@ -36,14 +36,14 @@ const AZURE_LOG_LIMIT = 32000;
  * an array of logs.
  */
 const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
-  { log, bindings }: SplunkContext,
+  { log, bindings, bindingData }: SplunkContext,
   eventHubMessages: any[]): Promise<void> {
 
   log.verbose(`Starting function with environment ${JSON.stringify(process.env)}`);
   try {
     log.info(`Handling ${eventHubMessages.length} event(s)`);
     const startTime = Date.now();
-    const payloads = buildHecPayloads(log, eventHubMessages);
+    const payloads = buildHecPayloads(log, eventHubMessages, bindingData);
     const { hecUrl, hecToken } = getHecParams();
     const timeToBuild = Date.now() - startTime;
 
@@ -91,6 +91,11 @@ function getHecParams(): HecParams {
   }
 
   return { hecUrl, hecToken };
+}
+
+function enabledEventhubMetadata(): boolean {
+  const enableEventhubMetadata = process.env.EnableEventhubMetadata;
+  return enableEventhubMetadata === "true";
 }
 
 /**
@@ -152,12 +157,13 @@ function createHecHttpClient(log: Logger, hecUrl: string, hecToken: string, time
  * Take build HEC payloads from EventHub messages.
  * @param log the logger to use.
  * @param eventHubMessages the EventHub messages to build HEC payloads from.
+ * @param bindingData the EventHub event metadata, batched the same way as eventHubMessages.
  */
-function buildHecPayloads(log: Logger, eventHubMessages: any[]): string[] {
+function buildHecPayloads(log: Logger, eventHubMessages: any[], bindingData: ContextBindingData): string[] {
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) into payloads for HEC.`);
 
   const batchSize = parseInt(process.env.SPLUNK_BATCH_MAX_SIZE_BYTES || '');
-  const splunkEvents = toSplunkEvents(log, eventHubMessages);
+  const splunkEvents = toSplunkEvents(log, eventHubMessages, bindingData);
   const serializedEvents = splunkEvents.map(e => JSON.stringify(e));
   const batchedEvents = batchSerializedEvents(log, serializedEvents, batchSize || DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES);
 
@@ -169,14 +175,20 @@ function buildHecPayloads(log: Logger, eventHubMessages: any[]): string[] {
  * Map EventHub messages into Splunk events.
  * @param log the logger to use.
  * @param eventHubMessages the EventHub messages to map.
+ * @param bindingData the event metadata to map.
  */
-function toSplunkEvents(log: Logger, eventHubMessages: any[]): SplunkEvent[] {
+function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: ContextBindingData): SplunkEvent[] {
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) to Splunk events.`);
   const splunkEvents: SplunkEvent[] = [];
+  const enableEventhubMetadata = enabledEventhubMetadata();
 
-  for (const eventHubMessage of eventHubMessages) {
+  for (let i = 0;i < eventHubMessages.length; i++) {
+    const eventHubMessage = eventHubMessages[i];
     log.verbose(`Mapping to Splunk event: ${JSON.stringify(eventHubMessage)}`);
     for (const record of eventHubMessage.records) {
+      if (enableEventhubMetadata) {
+        record.__eventhub_metadata = bindingData.systemPropertiesArray[i];
+      }
       splunkEvents.push(toSplunkEvent(record));
     }
   }
@@ -195,7 +207,7 @@ function toSplunkEvent(record: any): SplunkEvent {
     sourcetype: process.env.SourceType,
     fields: {
       data_manager_input_id: process.env.DataManagerInputId,
-    },
+    }
   }
 
   const timeStamp = tryExtractTimestamp(record);

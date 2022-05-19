@@ -13,8 +13,9 @@ This repository also includes
 1. Azure CLI.
    * https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
    * Run `az login` after installation complete
-1. Pester (in Powershell)
-   * Run `Install-Module -Name Pester` in Powershell
+1. Needed modules in Powershell
+   * Run `Install-Module -Name Pester` (unit tests)
+   * Run `Install-Module -Name Az -AllowClobber -Scope CurrentUser`
 1. Make sure you have Node 14.
 
 ### Local configuration
@@ -57,14 +58,14 @@ surrounded with `%` symbols. For example, `%EventHubConnection%`.
 
 ### Build and run
 ```bash
-> npm run start
+npm run start
 ```
 
 ### Run tests
 #### Azure Function Tests
 From the project root:
 ```bash
-> npm test
+npm test
 ```
 
 #### ARM Template Tests
@@ -105,3 +106,8 @@ After being initialized, an additional output binding for blob storage was added
 ## Enabling Verbose Logging
 In `host.json`, set `logging.logLevel.Function` to `Trace` to enable verbose logging just for this Azure Function code.
 For more logging options for other components, see [Configure log levels](https://docs.microsoft.com/en-us/azure/azure-functions/configure-monitoring?tabs=v2#configure-log-levels) in the Microsoft Azure documentation.
+
+## Appendix
+### Setup Azure dev account
+Ask to be added to `CDC TEAM` Azure directory (splunkcdcdev.onmicrosoft.com). 
+You will also need to be made a global admin (for AAD diagnostics settings) and owner of subscriptions (for acivity logs, diagnostics settings on subscriptions).
