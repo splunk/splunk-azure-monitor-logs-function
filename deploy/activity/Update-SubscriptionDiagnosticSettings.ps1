@@ -8,7 +8,7 @@
 
 .COMPANYNAME Splunk, Inc.
 
-.COPYRIGHT 
+.COPYRIGHT
 Copyright 2021 Splunk, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"): you may
@@ -22,7 +22,7 @@ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations
 under the License.
- 
+
 .LICENSEURI http://www.apache.org/licenses/LICENSE-2.0
 
 .PROJECTURI https://github.com/splunk/splunk-azure-monitor-logs-function/
@@ -103,13 +103,15 @@ param (
     [string] $EventHubAuthRuleId,
     [Parameter(Mandatory = $true, ParameterSetName = "DeriveEventHubAuthRuleId")]
     [string] $DestinationSubscriptionId,
+    [Parameter(Mandatory = $false, ParameterSetName = "DeriveEventHubAuthRuleId")]
+    [string] $ExistingResourceGroupName="SplunkDMDataIngest-${SCDMInputId}",
     [Parameter(Mandatory = $true)]
     [string] $TenantId
 )
 
 # Infer EventHubAuthRuleId if required
 if ($PSBoundParameters.ContainsKey('DestinationSubscriptionId')) {
-    $EventHubAuthRuleId = "/subscriptions/${DestinationSubscriptionId}/resourceGroups/SplunkDMDataIngest-${SCDMInputId}/providers/Microsoft.EventHub/namespaces/splkActLogsEH${SCDMInputId}/authorizationRules/splk-activity-logs-eventhub-auth-send"
+    $EventHubAuthRuleId = "/subscriptions/${DestinationSubscriptionId}/resourceGroups/${ExistingResourceGroupName}/providers/Microsoft.EventHub/namespaces/splkActLogsEH${SCDMInputId}/authorizationRules/splk-activity-logs-eventhub-auth-send"
     Write-Host "Using Event Hub authorization rule id '${EventHubAuthRuleId}'"
 }
 
@@ -131,7 +133,7 @@ function Set-DiagnosticSetting {
         -EventHubAuthorizationRuleId $EventHubAuthRuleId `
         -EventHubName $EventHubName `
         -Setting $allDiagSettings
-        
+
     Set-AzDiagnosticSetting -InputObject $setting -ErrorAction Stop
 
     Write-Host "Finished creating and setting diagnostic setting for subscription '${SubscriptionIdToEnableDiagSetting}'"
@@ -170,7 +172,7 @@ function Get-DiagnosticSettingExists {
     return $false;
 }
 
-try 
+try
 {
     # Get all diagnostic settings for a subscription so we can enable them
     $allDiagSettings = @()
