@@ -31,7 +31,6 @@ Describe "Azure ARM Template Unit Tests" {
         $eventHubName =  "splk-aad-logs-eventhub"
         $eventHubNamespaceName =  "splkAadLogsEH" + $SCDMInputId
         $functionName = "splkAadLogsFn" + $SCDMInputId
-        $hostingPlanName =  "splk-aad-logs-hosting-plan"
 
         $deploymentResult = Get-AzDeploymentWhatIfResult `
             -Name "UnitTestDeployment" `
@@ -218,7 +217,6 @@ Describe "Azure ARM Template Unit Tests" {
 
             $appServicePlans | Should -HaveCount 1
             $appServicePlans[0].ChangeType | Should -Be "Create"
-            $appServicePlans[0].After["name"].Value | Should -Be $hostingPlanName
             $appServicePlans[0].After["kind"].Value | Should -Be "functionapp"
             $appServicePlans[0].After["tags"]["SplunkDMInputId"].Value | Should -Be $SCDMInputId
             $appServicePlans[0].After["tags"]["SplunkDMDeletionOrder"].Value | Should -Be "2"
