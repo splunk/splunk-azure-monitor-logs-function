@@ -118,6 +118,13 @@ Describe "Azure ARM Template Unit Tests" {
                 "Microsoft.Web/sites/read", `
                 "Microsoft.Web/serverfarms/read", `
                 "Microsoft.Web/sites/sourcecontrols/read"
+
+            $permissions[0].ContainsKey("dataActions") | Should -Be $true
+            $dataActions = New-Object Collections.Generic.List[string]
+            foreach($dataAction in $permissions[0]["dataActions"]) {
+                $dataActions.Add($dataAction.Value)
+            }
+            $dataActions.ToArray() | Should -Be "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read"
         }
 
         It "Role Assignments Created" {

@@ -208,6 +208,9 @@
                       "Microsoft.Web/sites/read",
                       "Microsoft.Web/serverfarms/read",
                       "Microsoft.Web/sites/sourcecontrols/read"
+                    ],
+                    "dataActions": [
+                      "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read"
                     ]
                   }
                 ]
