@@ -176,7 +176,7 @@
             "eventHubName": "splk-aad-logs-eventhub",
             "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkAadLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
             "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkAadLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
-            "hostingPlanName": "splk-aad-logs-hosting-plan",
+            "hostingPlanName": "[concat('splk-aad-logs-hosting-plan', uniqueString(parameters('scdmInputId')))]",
             "backupStorageAccountName": "[if(equals(parameters('altBackupStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altBackupStorageName'))]",
             "logsStorageAccountName": "[if(equals(parameters('altLogsStorageName'), ''), concat('splklogstr', uniqueString(parameters('scdmInputId'))), parameters('altLogsStorageName'))]",
             "jobsStorageAccountName": "[if(equals(parameters('altJobsStorageName'), ''), concat('splkjobstr', uniqueString(parameters('scdmInputId'))), parameters('altJobsStorageName'))]"
