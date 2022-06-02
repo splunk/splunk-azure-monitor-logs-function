@@ -13,11 +13,21 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-import { Context, ContextBindings, Logger } from "@azure/functions"
-import axios, { AxiosInstance } from "axios"
+import { Context, ContextBindings, ContextBindingData, Logger } from "@azure/functions"
+import axios, { AxiosError, AxiosInstance } from "axios"
+import axiosRetry from "axios-retry"
 import * as moment from "moment"
+import { gzip } from 'node-gzip';
 
 const DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000;
+
+/* This constant mirrors the timeout setting in host.json */
+const FUNC_TIMEOUT = 10 * 60 * 1000;
+const INIT_TIME = 2 * 60 * 1000;
+const WRITE_TIME = 30 * 1000;
+const BUFFER = 30 * 1000;
+const MAX_RETRIES = 2;
+const AZURE_LOG_LIMIT = 32000;
 
 /**
  * Entrypoint for function that handles a list of events.
@@ -26,24 +36,36 @@ const DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES = 1 * 1000 * 1000;
  * an array of logs.
  */
 const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
-  {log, bindings}: SplunkContext,
+  { log, bindings, bindingData }: SplunkContext,
   eventHubMessages: any[]): Promise<void> {
 
   log.verbose(`Starting function with environment ${JSON.stringify(process.env)}`);
-
   try {
-    const hecHttpClient = createHecHttpClient(log, process.env.HecUrl, process.env.HecToken);
     log.info(`Handling ${eventHubMessages.length} event(s)`);
-    const payloads = buildHecPayloads(log, eventHubMessages);
+    const startTime = Date.now();
+    const payloads = buildHecPayloads(log, eventHubMessages, bindingData);
+    const { hecUrl, hecToken } = getHecParams();
+    const timeToBuild = Date.now() - startTime;
+
+    /**
+     * To prevent the timeout from being negative set a minimum timeout of 1ms.
+     * In the event eventHubMessages is empty, payloads.length = 0. Set a minimum of 1 to prevent divide by zero error
+     * This will cause the HEC request to fail immediately and be written to storage
+     */
+    const timeout = Math.max(((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - timeToBuild) / (MAX_RETRIES + 1)), 1) / Math.max(1, payloads.length);
+
+    const hecHttpClient = createHecHttpClient(log, hecUrl, hecToken, timeout);
 
     log.info(`Sending ${payloads.length} payload(s) to Splunk`);
     const failedPayloads: string[] = [];
     for (const payload of payloads) {
       try {
         await pushToHec(log, hecHttpClient, payload);
-      } catch (error) {
-        log.error(`Failed to push to HEC.\n${error.stack ?? 'Error: ' + error}\nPayload: ${payload}`);
+      } catch (error: any) {
         failedPayloads.push(payload);
+        const errorMessage = (error.stack ?? 'Error: ' + error).slice(0, AZURE_LOG_LIMIT);
+        log.error(`Failed to push to HEC. Error: ${errorMessage}`);
+        log.error(`Failed to push to HEC. Payload: ${payload}`);
       }
     }
 
@@ -56,39 +78,92 @@ const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
   log.info(`Finished handling ${eventHubMessages.length} event(s)`);
 };
 
+function getHecParams(): HecParams {
+  const hecUrl = process.env.HecUrl;
+  const hecToken = process.env.HecToken;
+
+  if (hecUrl === undefined) {
+    throw new Error('HecUrl is not defined');
+  }
+
+  if (hecToken === undefined) {
+    throw new Error('HecToken is not defined');
+  }
+
+  return { hecUrl, hecToken };
+}
+
+function enabledEventhubMetadata(): boolean {
+  const enableEventhubMetadata = process.env.EnableEventhubMetadata;
+  return enableEventhubMetadata === "true";
+}
+
+/**
+ * Return if error can be resolved by a retry
+ * @param error error returned by Axios Client
+ * @returns error can be retried
+ */
+function isRetryableError(error: AxiosError): boolean {
+  return (
+    axiosRetry.isNetworkError(error) ||
+    error.code === 'ENOTFOUND' ||   // ENOTFOUND is not considered a retryable error by axios.
+                                    // Intermittent ENOTFOUND errors were observed during performance tests due to high load/Node issues
+    (error.response?.status == 408 || // HEC Request Timeout
+      error.response?.status == 429 || // HEC Throttling
+      (
+        error.response != undefined &&
+        error.response.status >= 500 &&
+        error.response.status <= 599
+      )
+    )
+  );
+}
+
+function getRetryDelay(retryCount: number, error: AxiosError): number {
+  // No delay unless throttling occurs
+  return (error.response?.status == 429) ? axiosRetry.exponentialDelay(retryCount) : 0;
+}
 
 /**
  * Create an HTTP client used for sending data via HEC.
  * @param log the logger to use.
  * @param hecUrl the base url for all HTTP requests.
  * @param hecToken the HEC token added as a default header.
+ * @param timeout the timeout value for the HTTP client in ms
  */
-function createHecHttpClient(log: Logger, hecUrl: string | undefined, hecToken: string | undefined): AxiosInstance {
-  if (hecUrl === undefined) {
-    throw new Error('HecUrl is not defined');
-  }
-
+function createHecHttpClient(log: Logger, hecUrl: string, hecToken: string, timeout: number): AxiosInstance {
   const headers = {
-    'Authorization': `Splunk ${hecToken}`
+    'Authorization': `Splunk ${hecToken}`,
+    'Content-Encoding': 'gzip',
   };
   log.info(`Creating HTTP client baseUrl='${hecUrl}' headers='${JSON.stringify(headers)}'`);
-  return axios.create({
+  const client = axios.create({
     baseURL: hecUrl,
-    headers: headers,
+    headers,
+    timeout,
     validateStatus: () => true
   });
+
+  axiosRetry(client, {
+    retries: MAX_RETRIES,
+    retryCondition: isRetryableError,
+    retryDelay: getRetryDelay
+  });
+
+  return client;
 }
 
 /**
  * Take build HEC payloads from EventHub messages.
  * @param log the logger to use.
  * @param eventHubMessages the EventHub messages to build HEC payloads from.
+ * @param bindingData the EventHub event metadata, batched the same way as eventHubMessages.
  */
-function buildHecPayloads(log: Logger, eventHubMessages: any[]): string[] {
+function buildHecPayloads(log: Logger, eventHubMessages: any[], bindingData: ContextBindingData): string[] {
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) into payloads for HEC.`);
 
   const batchSize = parseInt(process.env.SPLUNK_BATCH_MAX_SIZE_BYTES || '');
-  const splunkEvents = toSplunkEvents(log, eventHubMessages);
+  const splunkEvents = toSplunkEvents(log, eventHubMessages, bindingData);
   const serializedEvents = splunkEvents.map(e => JSON.stringify(e));
   const batchedEvents = batchSerializedEvents(log, serializedEvents, batchSize || DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES);
 
@@ -100,14 +175,20 @@ function buildHecPayloads(log: Logger, eventHubMessages: any[]): string[] {
  * Map EventHub messages into Splunk events.
  * @param log the logger to use.
  * @param eventHubMessages the EventHub messages to map.
+ * @param bindingData the event metadata to map.
  */
-function toSplunkEvents(log: Logger, eventHubMessages: any[]): SplunkEvent[] {
+function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: ContextBindingData): SplunkEvent[] {
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) to Splunk events.`);
   const splunkEvents: SplunkEvent[] = [];
+  const enableEventhubMetadata = enabledEventhubMetadata();
 
-  for (const eventHubMessage of eventHubMessages) {
+  for (let i = 0;i < eventHubMessages.length; i++) {
+    const eventHubMessage = eventHubMessages[i];
     log.verbose(`Mapping to Splunk event: ${JSON.stringify(eventHubMessage)}`);
     for (const record of eventHubMessage.records) {
+      if (enableEventhubMetadata) {
+        record.__eventhub_metadata = bindingData.systemPropertiesArray[i];
+      }
       splunkEvents.push(toSplunkEvent(record));
     }
   }
@@ -120,11 +201,13 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[]): SplunkEvent[] {
  * @param record the record to map.
  */
 function toSplunkEvent(record: any): SplunkEvent {
-  record.data_manager_input_id = process.env.DataManagerInputId;
   let splunkEvent: SplunkEvent = {
     event: record,
     source: getSource(),
-    sourcetype: process.env.SourceType
+    sourcetype: process.env.SourceType,
+    fields: {
+      data_manager_input_id: process.env.DataManagerInputId,
+    }
   }
 
   const timeStamp = tryExtractTimestamp(record);
@@ -153,7 +236,7 @@ function getSource(): string {
  * Try to extract a timestamp from a record.
  * @param record the record to extract a timestamp from.
  */
-function tryExtractTimestamp(record: any): string | undefined {
+function tryExtractTimestamp(record: any): number | undefined {
   if (!record.hasOwnProperty('time')) {
     return undefined;
   }
@@ -161,7 +244,7 @@ function tryExtractTimestamp(record: any): string | undefined {
   if (isNaN(time)) {
     return undefined;
   }
-  return time.toString();
+  return time;
 }
 
 /**
@@ -197,12 +280,25 @@ function batchSerializedEvents(log: Logger, serializedEvents: string[], batchSiz
  * @param payload the payload to send.
  */
 async function pushToHec(log: Logger, hecHttpClient: AxiosInstance, payload: string) {
-  log.verbose(`Push to HEC with Payload=${payload}`);
-  const response = await hecHttpClient.post('services/collector/event', payload);
-  log.verbose(`Pushed to HEC and got response with Code=${response.status} Body=${JSON.stringify(response.data)}`);
+  log.verbose(`Push to HEC with Payload=${payload.slice(0, AZURE_LOG_LIMIT)}`);
+  const compressedPayload = await gzip(payload);
+  const response = await hecHttpClient.post('services/collector/event', compressedPayload);
+  let responseBody = '';
+
+  if(response.headers &&
+      response.headers['content-type'] &&
+      response.headers['content-type'].includes('application/json') &&
+      response.data) {
+    responseBody = JSON.stringify(response.data).slice(0, AZURE_LOG_LIMIT);
+  } else {
+    responseBody = response?.data?.slice(0, AZURE_LOG_LIMIT);
+  }
+
+  log.verbose(`Pushed to HEC. Response Code = ${response.status}`);
+  log.verbose(`Pushed to HEC. Response Body = ${responseBody}`);
 
   if (!(response.status >= 200 && response.status < 300)) {
-    throw new Error(`HEC push failed. Code=${response.status}, Body=${JSON.stringify(response.data)}`);
+    throw new Error(`HEC push failed. Code=${response.status}, Body=${responseBody}`);
   }
 }
 
@@ -214,9 +310,9 @@ async function pushToHec(log: Logger, hecHttpClient: AxiosInstance, payload: str
  * @param eventHubMessages the EventHub messages that need to be backed up.
  */
 function handleGlobalError(log: Logger, bindings: SplunkContextBindings, error: any, eventHubMessages: any[]) {
-  log.error(`Failed before pushing events. Error=${error.stack ?? error}`);
-
   bindings.failedParseEventsOutputBlob = eventHubMessages;
+
+  log.error(`Failed before pushing events. Error=${error.stack ?? error}`);
   log.info(`Backed up ${eventHubMessages.length} EventHub event(s) to blob storage`);
 }
 
@@ -236,13 +332,22 @@ function handlePushErrors(log: Logger, bindings: SplunkContextBindings, failedPa
 }
 
 /**
+ * Represents params for HEC HTTP Client.
+ */
+type HecParams = {
+  hecUrl: string,
+  hecToken: string
+};
+
+/**
  * Represents a Splunk event being sent over HEC via events endpoint.
  */
 type SplunkEvent = {
-  event: any,
+  event: object,
   source: string,
   sourcetype: string | undefined,
-  time?: string
+  fields: object,
+  time?: number,
 };
 
 /**

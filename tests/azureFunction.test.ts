@@ -1,5 +1,6 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { expect } from 'chai';
+import { ungzip } from 'node-gzip';
 import { SinonStub } from 'sinon';
 
 import azureMonitorLogsProcessorFunc from '../azure_monitor_logs_processor_func/index';
@@ -11,11 +12,14 @@ describe('Azure Monitor Logs Process', function () {
   describe('Push events', () => {
     let httpClientStub: SinonStub;
     let postStub: SinonStub;
+    let clientInstance: AxiosInstance;
 
     this.beforeEach(() => {
+      sandbox.stub(process, 'env').value(mockEnv);
+      clientInstance = axios.create();
       httpClientStub = sandbox.stub(axios, 'create');
       postStub = sandbox.stub();
-      sandbox.stub(process, 'env').value(mockEnv);
+      clientInstance.post = postStub;
     });
 
     this.afterEach(() => {
@@ -23,42 +27,90 @@ describe('Azure Monitor Logs Process', function () {
     });
 
     it('should create httpClient with correct params', async () => {
-      httpClientStub.returns({
-        post: postStub
-      })
-      postStub.resolves({
-        status: 200
-      })
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
-      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
-
-      expect(httpClientStub.calledOnce).to.be.true;
-      expect(httpClientStub.firstCall.args.length).to.equal(1);
-      expect(httpClientStub.firstCall.args[0]).to.include.keys('baseURL', 'headers');
-      expect(httpClientStub.firstCall.args[0].baseURL).to.equal(mockEnv.HecUrl);
-      expect(httpClientStub.firstCall.args[0].headers).to.deep.equal({
-        Authorization: `Splunk ${mockEnv.HecToken}`
-      });
-    });
-
-    it('should call post correct params', async () => {
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
-      expect(postStub.calledOnce).is.true;
-      expect(postStub.firstCall.args).to.deep.equal([
-        'services/collector/event',
-        `{"event":{"Foo":"bar","data_manager_input_id":"${mockEnv.DataManagerInputId}"},` +
-        `"source":"azure:${mockEnv.Region}:${mockEnv.EventHubNamespace}:${mockEnv.EventHubName}",` +
-        `"sourcetype":"${mockEnv.SourceType}"}`
-      ]);
+      expect(httpClientStub.calledOnce).to.be.true;
+      expect(httpClientStub.firstCall.args.length).to.equal(1);
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('baseURL', 'headers', 'timeout');
+      expect(httpClientStub.firstCall.args[0].baseURL).to.equal(mockEnv.HecUrl);
+      expect(httpClientStub.firstCall.args[0].headers).to.deep.equal({
+        Authorization: `Splunk ${mockEnv.HecToken}`,
+        "Content-Encoding": "gzip"
+      });
     });
 
-    it('should populate all fields in splunk event', async () => {
-      httpClientStub.returns({ post: postStub });
+    it('should calculate appropriate httpClient timeout', async () => {
+      const dateStub = sandbox.stub(Date, 'now');
+
+      dateStub.onCall(0).returns(new Date(1633453028000));
+      dateStub.onCall(1).returns(new Date(1633453028100));
+
+      // ((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload) / RetryCount) / Number of batches
+      const timeout = (((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100) / 3) / 1;
+
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(httpClientStub.calledOnce).to.be.true;
+      expect(httpClientStub.firstCall.args.length).to.equal(1);
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('timeout');
+      expect(httpClientStub.firstCall.args[0].timeout).to.equal(timeout);
+    });
+
+    it('should handle not set negative httpClient timeout', async () => {
+      const dateStub = sandbox.stub(Date, 'now');
+
+      dateStub.onCall(0).returns(new Date(1633453028000));
+      dateStub.onCall(1).returns(new Date(1633454028100));
+
+      const timeout = 1;
+
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(httpClientStub.calledOnce).to.be.true;
+      expect(httpClientStub.firstCall.args.length).to.equal(1);
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('timeout');
+      expect(httpClientStub.firstCall.args[0].timeout).to.equal(timeout);
+    });
+
+    it('should handle multiple requests httpClient timeout', async () => {
+      const dateStub = sandbox.stub(Date, 'now');
+      sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(10);
+
+      dateStub.onCall(0).returns(new Date(1633453028000));
+      dateStub.onCall(1).returns(new Date(1633453028100));
+
+      // ((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload) / RetryCount) / Number of batches
+      const timeout = (((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100) / 3) / 2;
+
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }, { records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(httpClientStub.calledOnce).to.be.true;
+      expect(httpClientStub.firstCall.args.length).to.equal(1);
+      expect(httpClientStub.firstCall.args[0]).to.include.keys('timeout');
+      expect(httpClientStub.firstCall.args[0].timeout).to.equal(timeout);
+    });
+
+    it('should make correct POST request', async () => {
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
@@ -66,19 +118,52 @@ describe('Azure Monitor Logs Process', function () {
 
       expect(postStub.calledOnce).is.true;
       expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        },
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
 
-      const splunkEvent = JSON.parse(postStub.firstCall.args[1]);
-      expect(splunkEvent).to.include.keys('event', 'source', 'sourcetype')
-      expect(splunkEvent.source).to.equal(`azure:${mockEnv.Region}:${mockEnv.EventHubNamespace}:${mockEnv.EventHubName}`);
-      expect(splunkEvent.sourcetype).to.equal(mockEnv.SourceType);
-      expect(splunkEvent.event).to.include.keys('Foo', 'data_manager_input_id');
-      expect(splunkEvent.event.Foo).to.equal('bar');
-      expect(splunkEvent.event.data_manager_input_id).to.equal(mockEnv.DataManagerInputId);
+    it('should make correct POST request with eventhub metadata if enabled', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EnableEventhubMetadata').value("true");
+      sandbox.stub(splunkContext.bindingData,'systemPropertiesArray').value([{ 'lemon': 'tree' }]);
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar',
+          __eventhub_metadata: {
+            lemon: 'tree'
+          }
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        },
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
     });
 
     it('should batch events', async () => {
       sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(400);
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
       const eventHubMessages = [
@@ -102,13 +187,18 @@ describe('Azure Monitor Logs Process', function () {
       ];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
+      // Uncompress zip payload
+      const firstCallUncompressedEvent = (await ungzip(postStub.firstCall.args[1])).toString();
+      const secondCallUncompressedEvent = (await ungzip(postStub.secondCall.args[1])).toString();
+
       expect(postStub.callCount).to.equal(2);
       expect(postStub.firstCall.args.length).to.equal(2);
-      expect(postStub.firstCall.args[1]).to.contain('batch_1');
-      expect(postStub.firstCall.args[1]).to.not.contain('batch_2');
+      expect(firstCallUncompressedEvent).to.contain('batch_1');
+      expect(firstCallUncompressedEvent).to.not.contain('batch_2');
       expect(postStub.secondCall.args.length).to.equal(2);
-      expect(postStub.secondCall.args[1]).to.not.contain('batch_1');
-      expect(postStub.secondCall.args[1]).to.contain('batch_2');
+      expect(secondCallUncompressedEvent).to.not.contain('batch_1');
+      expect(secondCallUncompressedEvent).to.contain('batch_2');
     });
+
   });
 });

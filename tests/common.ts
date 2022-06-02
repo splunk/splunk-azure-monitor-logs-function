@@ -11,7 +11,10 @@ export const context = {
     verbose: sandbox.stub(),
     error: sandbox.stub()
   },
-  bindings: {}
+  bindings: {},
+  bindingData: {
+    systemPropertiesArray: []
+  }
 };
 
 /**
@@ -29,7 +32,8 @@ export const mockEnv = {
   EventHubNamespace: "Mock-0-Namespace1",
   EventHubName: 'mock-eh-name',
   DataManagerInputId: 'mock-input-id',
-  SPLUNK_BATCH_MAX_SIZE_BYTES: 1 * 1000 * 1000
+  SPLUNK_BATCH_MAX_SIZE_BYTES: 1 * 1000 * 1000,
+  EnableEventhubMetadata: "false"
 };
 
 const createEvent = (size: number): string => {

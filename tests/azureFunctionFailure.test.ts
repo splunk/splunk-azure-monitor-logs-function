@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { expect } from 'chai';
 import { SinonStub } from 'sinon';
 
@@ -11,10 +11,13 @@ describe('Azure Monitor Logs Process', function () {
   describe('Failed Events', () => {
     let httpClientStub: SinonStub;
     let postStub: SinonStub;
+    let clientInstance: AxiosInstance;
 
     this.beforeEach(() => {
+      clientInstance = axios.create();
       httpClientStub = sandbox.stub(axios, 'create');
       postStub = sandbox.stub();
+      clientInstance.post = postStub;
       sandbox.stub(process, 'env').value(mockEnv);
       splunkContext.bindings = {};
     });
@@ -110,13 +113,13 @@ describe('Azure Monitor Logs Process', function () {
     });
 
     it('should save batch on hec bad response', async () => {
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 500 });
 
       const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
-      const expectedOutputBlob = `{"event":{"Foo":"bar","data_manager_input_id":"mock-input-id"},` +
-        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name"` +
-        `,"sourcetype":"mock_sourcetype"}`;
+      const expectedOutputBlob = `{"event":{"Foo":"bar"},` +
+        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}`;
 
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
@@ -127,7 +130,7 @@ describe('Azure Monitor Logs Process', function () {
 
     it('should save multiple batches on hec bad response', async () => {
       sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(1);
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 500 });
 
       const eventHubMessages = [
@@ -147,13 +150,13 @@ describe('Azure Monitor Logs Process', function () {
         },
       ];
 
-      const expectedOutputBlob = `{"event":{"Foo":"from_msg1","data_manager_input_id":"mock-input-id"},` +
-        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name"` +
-        `,"sourcetype":"mock_sourcetype"}` +
+      const expectedOutputBlob = `{"event":{"Foo":"from_msg1"},` +
+        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}` +
         `\n` +
-        `{"event":{"Foo":"from_msg2","data_manager_input_id":"mock-input-id"},` +
-        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name"` +
-        `,"sourcetype":"mock_sourcetype"}`;
+        `{"event":{"Foo":"from_msg2"},` +
+        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}`;
 
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
@@ -164,7 +167,7 @@ describe('Azure Monitor Logs Process', function () {
 
     it('should save select batches on select hec bad responses', async () => {
       sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(1);
-      httpClientStub.returns({ post: postStub });
+      httpClientStub.returns(clientInstance);
       postStub
         .onFirstCall()
         .resolves({ status: 200 })
@@ -184,9 +187,9 @@ describe('Azure Monitor Logs Process', function () {
         },
       ];
 
-      const expectedOutputBlob = `{"event":{"Foo":"from_msg2","data_manager_input_id":"mock-input-id"},` +
-        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name"` +
-        `,"sourcetype":"mock_sourcetype"}`;
+      const expectedOutputBlob = `{"event":{"Foo":"from_msg2"},` +
+        `"source":"azure:mock_region:Mock-0-Namespace1:mock-eh-name",` +
+        `"sourcetype":"mock_sourcetype","fields":{"data_manager_input_id":"mock-input-id"}}`;
 
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 

@@ -64,3 +64,10 @@ coverage.xml
 # code coverage
 coverage/
 .nyc_output/
+
+# ARM test toolkit
+arm-ttk-latest/
+arm-ttk-latest.zip
+
+# Zipped packages
+*.zip

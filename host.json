@@ -1,5 +1,13 @@
 {
   "version": "2.0",
+  "extensions": {
+    "eventHubs": {
+      "eventProcessorOptions": {
+        "maxBatchSize": 200,
+        "prefetchCount": 400
+      }
+    }
+  },
   "logging": {
     "applicationInsights": {
       "samplingSettings": {
@@ -14,6 +22,7 @@
       "Host.Aggregator": "Information"
     }
   },
+  "functionTimeout": "00:10:00",
   "extensionBundle": {
     "id": "Microsoft.Azure.Functions.ExtensionBundle",
     "version": "[2.*, 3.0.0)"
