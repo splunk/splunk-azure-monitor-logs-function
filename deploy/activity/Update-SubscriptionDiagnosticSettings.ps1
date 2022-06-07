@@ -72,6 +72,9 @@ under the License.
     The ID of the tenant the script is running under. Used to list
     subscriptions.
 
+.PARAMETER ExistingResourceGroupName
+    The name of an existing resource group in Azure that the resources will be deployed to. Used to infer the EventHubAuthRuleId
+
 .EXAMPLE
     The example below creates a diagnostic setting on
     'c18feaec-82a8-41a8-a774-0ccf3f851e95', and
