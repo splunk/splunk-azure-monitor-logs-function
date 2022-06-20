@@ -112,7 +112,7 @@
             "value": "[parameters('hecUrl')]"
           },
           "region": {
-              "value": "[parameters('region')]"
+            "value": "[parameters('region')]"
           },
           "scdmInputId": {
             "value": "[parameters('scdmInputId')]"
@@ -169,15 +169,15 @@
             }
           },
           "variables": {
-            "consumerGroupName": "splk-aad-logs-consumer-group",
-            "eventHubAuthRuleListen": "splk-aad-logs-eventhub-auth-listen",
-            "eventHubAuthRuleSend": "splk-aad-logs-eventhub-auth-send",
+            "consumerGroupName": "splk-resource-logs-consumer-group",
+            "eventHubAuthRuleListen": "splk-resource-logs-eventhub-auth-listen",
+            "eventHubAuthRuleSend": "splk-resource-logs-eventhub-auth-send",
             "eventHubMaxThroughputUnits": 40,
-            "eventHubName": "splk-aad-logs-eventhub",
-            "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkAadLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
-            "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkAadLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
-            "hostingPlanName": "[concat('splk-aad-logs-hosting-plan', uniqueString(parameters('scdmInputId')))]",
-            "backupStorageAccountName": "[if(equals(parameters('altBackupStorageName'), ''), concat('splkaadstr', uniqueString(parameters('scdmInputId'))), parameters('altBackupStorageName'))]",
+            "eventHubName": "splk-resource-logs-eventhub",
+            "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkResLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
+            "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkResLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
+            "hostingPlanName": "[concat('splk-res-logs-hosting-plan', uniqueString(parameters('scdmInputId')))]",
+            "backupStorageAccountName": "[if(equals(parameters('altBackupStorageName'), ''), concat('splkresstr', uniqueString(parameters('scdmInputId'))), parameters('altBackupStorageName'))]",
             "logsStorageAccountName": "[if(equals(parameters('altLogsStorageName'), ''), concat('splklogstr', uniqueString(parameters('scdmInputId'))), parameters('altLogsStorageName'))]",
             "jobsStorageAccountName": "[if(equals(parameters('altJobsStorageName'), ''), concat('splkjobstr', uniqueString(parameters('scdmInputId'))), parameters('altJobsStorageName'))]"
           },
@@ -496,10 +496,10 @@
                     {
                       "name": "AzureWebJobsStorage",
                       "value": "[concat(
-                        'DefaultEndpointsProtocol=https;AccountName=',
-                        variables('jobsStorageAccountName'),
-                        ';AccountKey=',
-                        listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName')), '2021-04-01').keys[0].value)]"
+                          'DefaultEndpointsProtocol=https;AccountName=',
+                          variables('jobsStorageAccountName'),
+                          ';AccountKey=',
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName')), '2021-04-01').keys[0].value)]"
                     },
                     {
                       "name": "ConsumerGroupName",
@@ -520,10 +520,10 @@
                     {
                       "name": "FailedEventsStorageConnection",
                       "value": "[concat(
-                        'DefaultEndpointsProtocol=https;AccountName=',
-                        variables('backupStorageAccountName'),
-                        ';AccountKey=',
-                        listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName')), '2021-04-01').keys[0].value)]"
+                          'DefaultEndpointsProtocol=https;AccountName=',
+                          variables('backupStorageAccountName'),
+                          ';AccountKey=',
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName')), '2021-04-01').keys[0].value)]"
                     },
                     {
                       "name": "HecUrl",
@@ -539,7 +539,7 @@
                     },
                     {
                       "name": "SourceType",
-                      "value": "azure:monitor:aad"
+                      "value": "azure:monitor:resource"
                     },
                     {
                       "name": "Region",
