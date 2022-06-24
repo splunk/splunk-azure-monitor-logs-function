@@ -63,17 +63,17 @@ under the License.
     The name of an existing resource group in Azure that the resources will be deployed to. Used to infer the EventHubAuthRuleId
 
 .EXAMPLE
-    The example below creates a diagnostic setting on
-    'splkActLogsFn05524e4a-598b-4493-8ea7-58b7cc35124d'.
-    PS C:\> ./Update-ResourceDiagnosticSettings.ps1 ` 
-        -ResourcesToEnableDiagnosticSettings @('/subscriptions/c83c2282-2e21-4f64-86ae-fdfa66b673eb/resourceGroups/SplunkDMDataIngest-05524e4a-598b-4493-8ea7-58b7cc35124d/providers/Microsoft.Web/sites/splkActLogsFn05524e4a-598b-4493-8ea7-58b7cc35124d') `
-        -SCDMInputId 05524e4a-598b-4493-8ea7-58b7cc35124d `
+    The example below creates a diagnostic setting on an Azure function resource.
+    ./Update-ResourceDiagnosticSettings.ps1 `
+        -ResourcesToEnableDiagnosticSettings @('/subscriptions/c83c2282-2e21-4f64-86ae-fdfa66b673eb/resourceGroups/SplunkDMDataIngest-3da4204b-9293-42eb-997b-819bb5a4dfef/providers/Microsoft.Web/sites/splkResLogsFn3da4204b-9293-42eb-997b-819bb5a4dfef') `
+        -SCDMInputId 3da4204b-9293-42eb-997b-819bb5a4dfef `
         -TenantId 501792f2-ef2c-4251-957b-293fadb63ddc `
         -DestinationSubscriptionId c83c2282-2e21-4f64-86ae-fdfa66b673eb
+
 #>
 param (
     [Parameter(Mandatory = $true)]
-    [object[]] $ResourcesToEnableDiagnosticSettings,
+    [string[]] $ResourcesToEnableDiagnosticSettings,
     [Parameter(Mandatory = $true)]
     [string] $SCDMInputId,
     [Parameter(Mandatory = $false)]
@@ -107,18 +107,17 @@ function Set-DiagnosticSetting {
         -EnableLog $True `
         -EventHubName $EventHubName `
         -EventHubAuthorizationRuleId $EventHubAuthRuleId `
+        -WarningAction Ignore
 
     Write-Host "Finished creating and setting diagnostic setting for resource '${ResourceIdToEnableDiagSetting}'"
 }
 
-try
-{
+try {
     foreach ($resourceId in $ResourcesToEnableDiagnosticSettings) {
         Set-DiagnosticSetting -ResourceIdToEnableDiagSetting $resourceId
     }
 }
-catch
-{
+catch {
     Write-Error -Message "There was an error updating diagnostic settings. Please resolve the problem and retry."
     Write-Error -Exception $PSItem.Exception
 }
