@@ -8,15 +8,19 @@ This repository also includes
 ## Set up the Dev Environment
 
 ### Install tools
-1. Azure Functions Core Tools. Install v3.
-   * https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=macos%2Ccsharp%2Cbash#v3
-1. Azure CLI.
+1. Azure Functions Core Tools (Install latest version).
+   * https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cmacos%2Ccsharp%2Cportal%2Cbash#v4
+2. Azure CLI.
    * https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
    * Run `az login` after installation complete
-1. Needed modules in Powershell
+3. Powershell (Install latest version).
+
+   https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-macos?view=powershell-7.2
+   
+   Needed modules in Powershell
    * Run `Install-Module -Name Pester` (unit tests)
    * Run `Install-Module -Name Az -AllowClobber -Scope CurrentUser`
-1. Make sure you have Node 14.
+4. Make sure you have Node 14.
 
 ### Local configuration
 Create a file named `local.settings.json` at the root of the repository and fill in the appropriate values. The values
@@ -56,6 +60,11 @@ surrounded with `%` symbols. For example, `%EventHubConnection%`.
 - **EventHubName**: The name of the EventHub to receive logs from. This has a one-to-one mapping to sourcetype. For example, EventHub name of `aad-logs` for `azure:monitor:aad`, `activity-logs` for `azure:monitor:activity`, or `resource-logs` for `azure:monitor:resource`
 - **DataManagerInputId**: The ID of the Splunk Cloud Data Manager input. For example, `X99XXXXX-111X-222X-X333-XX789X789X789X`.
 
+### Install Dependencies
+Required first time and whenever you change package.json.
+```bash
+npm install
+```
 ### Build and run
 ```bash
 npm run start
@@ -72,7 +81,10 @@ npm test
 Tests for ARM templates need to be run in Powershell.
 
 Run validation and unit tests on ARM templates from the project root:
+
+(Validation test for ARM template is currently failing and will be fixed in ADDON-55074)
 ```powershell
+Connect-AzAccount -Tenant '<your-tenant-id>'
 Import-Module ./Test-ARMTemplates.ps1
 Test-ARMTemplates -TemplateFolder ./deploy -UnitTest
 ```
