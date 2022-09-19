@@ -82,7 +82,6 @@ Tests for ARM templates need to be run in Powershell.
 
 Run validation and unit tests on ARM templates from the project root:
 
-(Validation test for ARM template is currently failing and will be fixed in ADDON-55074)
 ```powershell
 Connect-AzAccount -Tenant '<your-tenant-id>'
 Import-Module ./Test-ARMTemplates.ps1

@@ -186,7 +186,7 @@
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleDefinitions",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 7))]",
-              "apiVersion": "2018-07-01",
+              "apiVersion": "2022-04-01",
               "properties": {
                 "description": "This role will allow Splunk Data Manager to read the metadata of your Azure Subscription and Azure resources created during this ARM deployment (such as the Event Hub Namespace and Storage Account) so that Splunk can make recommendations during onboarding.",
                 "roleName": "[concat('splunk-dm-read-only-', parameters('scdmInputId'))]",
@@ -220,7 +220,7 @@
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleAssignments",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 8))]",
-              "apiVersion": "2021-04-01-preview",
+              "apiVersion": "2022-04-01",
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
               ],
