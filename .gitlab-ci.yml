@@ -9,9 +9,9 @@ cache:
     - node_modules/
 
 include:
-  - project: 'prodsec/whitesource'
-    ref: latest
-    file: '/templates/.whitesource.yml'
+  - project: 'ci-cd/templates'
+    ref: master
+    file: '/prodsec/.oss-scan.yml'
   - project: 'prodsec/scp-scanning/gitlab-checkmarx'
     ref: latest
     file: '/templates/.sast_scan.yml'
@@ -29,13 +29,9 @@ sast-scanner:
     SAST_SCANNER: "Semgrep"
     alert_mode: "policy" # Alert mode turned on to fail on any high vulns
 
-whitesource:
-  extends: .whitesource
+oss scan:
   stage: test
-  variables:
-    ws_user_key: ${WHITESOURCE_USER_KEY}
-    product_id: ${WHITESOURCE_ID}
-    config: js-npm
+  extends: .oss-scan
   only:
     refs:
       - main
