@@ -43,14 +43,12 @@ test:
     - npm run build
     - npm test
 
-# ARM Template validation tests are currently failing
-# to be re-enabled in ADDON-55074
-#arm-validate:
-  #stage: test
-  #image:
-  #  name: "mcr.microsoft.com/powershell:latest"
-  #script:
-  #  - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId $AZURE_ID -AzureTenant $AZURE_TENANT -AzureToken $AZURE_TOKEN"
+arm-validate:
+  stage: test
+  image:
+   name: "mcr.microsoft.com/powershell:latest"
+  script:
+   - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId $AZURE_ID -AzureTenant $AZURE_TENANT -AzureToken $AZURE_TOKEN"
 
 .build-and-package: &build-and-package
   - npm install
