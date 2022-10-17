@@ -475,7 +475,7 @@
                       "*"
                     ]
                   },
-                  "linuxFxVersion": "node|14",
+                  "linuxFxVersion": "node|16",
                   "appSettings": [
                     {
                       "name": "FUNCTIONS_EXTENSION_VERSION",

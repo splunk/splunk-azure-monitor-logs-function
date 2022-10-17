@@ -1,6 +1,6 @@
 # Image running node 14, the runtime version Azure Function uses for TypeScript
 # https://docs.microsoft.com/en-us/azure/azure-functions/functions-versions
-image: repo.splunk.com/node:14
+image: repo.splunk.com/node:16
 
 # This folder is cached between builds
 # https://docs.gitlab.com/ee/ci/yaml/index.html#cache
