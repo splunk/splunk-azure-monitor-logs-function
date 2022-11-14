@@ -65,7 +65,6 @@ const azureMonitorLogsProcessorFunc: SplunkAzureFunction = async function (
         failedPayloads.push(payload);
         const errorMessage = (error.stack ?? 'Error: ' + error).slice(0, AZURE_LOG_LIMIT);
         log.error(`Failed to push to HEC. Error: ${errorMessage}`);
-        log.error(`Failed to push to HEC. Payload: ${payload}`);
       }
     }
 
@@ -136,7 +135,7 @@ function createHecHttpClient(log: Logger, hecUrl: string, hecToken: string, time
     'Authorization': `Splunk ${hecToken}`,
     'Content-Encoding': 'gzip',
   };
-  log.info(`Creating HTTP client baseUrl='${hecUrl}' headers='${JSON.stringify(headers)}'`);
+  log.info(`Creating HTTP client baseUrl='${hecUrl}'`);
   const client = axios.create({
     baseURL: hecUrl,
     headers,

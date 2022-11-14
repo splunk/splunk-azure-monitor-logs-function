@@ -72,6 +72,9 @@ under the License.
     The ID of the tenant the script is running under. Used to list
     subscriptions.
 
+.PARAMETER ExistingResourceGroupName
+    The name of an existing resource group in Azure that the resources will be deployed to. Used to infer the EventHubAuthRuleId
+
 .EXAMPLE
     The example below creates a diagnostic setting on
     'c18feaec-82a8-41a8-a774-0ccf3f851e95', and
@@ -91,6 +94,7 @@ under the License.
         -TenantId 9078fc2c-4e34-483c-abed-f8b139ab37d9 `
         -DestinationSubscriptionId 1dfeb2ca-3f59-4dc8-abaf-63ba63a6f429
 #>
+
 param (
     [Parameter(Mandatory = $true)]
     [AllowEmptyCollection()]
@@ -147,7 +151,7 @@ function Remove-DiagnosticSetting {
     Write-Host "Removing diagnostic setting from subscription '${SubscriptionIdToRemoveDiagSetting}'."
 
     if (!(Get-DiagnosticSettingExists -SubscriptionId $SubscriptionIdToRemoveDiagSetting)) {
-        Write-Host "Skipping removal of the diagnostic setting from subscription '${SubscriptionIdToRemoveDiagSetting}'. Already removed."
+        Write-Host "Setting does not exist. Skipping removal of the diagnostic setting from subscription '${SubscriptionIdToRemoveDiagSetting}'."
         return;
     }
 
@@ -172,8 +176,7 @@ function Get-DiagnosticSettingExists {
     return $false;
 }
 
-try
-{
+try {
     # Get all diagnostic settings for a subscription so we can enable them
     $allDiagSettings = @()
     Get-AzSubscriptionDiagnosticSettingCategory -ErrorAction Stop | ForEach-Object {
@@ -195,8 +198,7 @@ try
         }
     }
 }
-catch
-{
+catch {
     Write-Error -Message "There was an error updating diagnostic settings. Please resolve the problem and retry."
     Write-Error -Exception $PSItem.Exception
 }

@@ -1,6 +1,6 @@
 # Image running node 14, the runtime version Azure Function uses for TypeScript
 # https://docs.microsoft.com/en-us/azure/azure-functions/functions-versions
-image: repo.splunk.com/node:14
+image: repo.splunk.com/node:16
 
 # This folder is cached between builds
 # https://docs.gitlab.com/ee/ci/yaml/index.html#cache
@@ -9,9 +9,9 @@ cache:
     - node_modules/
 
 include:
-  - project: 'prodsec/whitesource'
-    ref: latest
-    file: '/templates/.whitesource.yml'
+  - project: 'ci-cd/templates'
+    ref: master
+    file: '/prodsec/.oss-scan.yml'
   - project: 'prodsec/scp-scanning/gitlab-checkmarx'
     ref: latest
     file: '/templates/.sast_scan.yml'
@@ -29,13 +29,9 @@ sast-scanner:
     SAST_SCANNER: "Semgrep"
     alert_mode: "policy" # Alert mode turned on to fail on any high vulns
 
-whitesource:
-  extends: .whitesource
+oss scan:
   stage: test
-  variables:
-    ws_user_key: ${WHITESOURCE_USER_KEY}
-    product_id: ${WHITESOURCE_ID}
-    config: js-npm
+  extends: .oss-scan
   only:
     refs:
       - main
@@ -50,9 +46,9 @@ test:
 arm-validate:
   stage: test
   image:
-    name: "mcr.microsoft.com/powershell:latest"
+   name: "mcr.microsoft.com/powershell:latest"
   script:
-    - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId $AZURE_ID -AzureTenant $AZURE_TENANT -AzureToken $AZURE_TOKEN"
+   - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId $AZURE_ID -AzureTenant $AZURE_TENANT -AzureToken $AZURE_TOKEN"
 
 .build-and-package: &build-and-package
   - npm install

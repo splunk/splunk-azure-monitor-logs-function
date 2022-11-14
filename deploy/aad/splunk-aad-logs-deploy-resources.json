@@ -2,7 +2,7 @@
   "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "altEventHubNamespaceName":{
+    "altEventHubNamespaceName": {
       "type": "string",
       "defaultValue": ""
     },
@@ -131,7 +131,7 @@
             "allResourceTags": {
               "type": "object"
             },
-            "altEventHubNamespaceName":{
+            "altEventHubNamespaceName": {
               "type": "string"
             },
             "altFunctionName": {
@@ -186,7 +186,7 @@
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleDefinitions",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 7))]",
-              "apiVersion": "2018-07-01",
+              "apiVersion": "2022-04-01",
               "properties": {
                 "description": "This role will allow Splunk Data Manager to read the metadata of your Azure Subscription and Azure resources created during this ARM deployment (such as the Event Hub Namespace and Storage Account) so that Splunk can make recommendations during onboarding.",
                 "roleName": "[concat('splunk-dm-read-only-', parameters('scdmInputId'))]",
@@ -220,7 +220,7 @@
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleAssignments",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 8))]",
-              "apiVersion": "2021-04-01-preview",
+              "apiVersion": "2022-04-01",
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleDefinitions/', parameters('scdmInputId'))]"
               ],
@@ -475,19 +475,15 @@
                       "*"
                     ]
                   },
-                  "linuxFxVersion": "node|14",
+                  "linuxFxVersion": "node|16",
                   "appSettings": [
                     {
                       "name": "FUNCTIONS_EXTENSION_VERSION",
-                      "value": "~3"
+                      "value": "~4"
                     },
                     {
                       "name": "FUNCTIONS_WORKER_RUNTIME",
                       "value": "node"
-                    },
-                    {
-                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
-                      "value": "~14"
                     },
                     {
                       "name": "WEBSITE_RUN_FROM_PACKAGE",

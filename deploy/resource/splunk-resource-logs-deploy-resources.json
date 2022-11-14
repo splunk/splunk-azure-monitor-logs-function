@@ -169,15 +169,15 @@
             }
           },
           "variables": {
-            "consumerGroupName": "splk-activity-logs-consumer-group",
-            "eventHubAuthRuleListen": "splk-activity-logs-eventhub-auth-listen",
-            "eventHubAuthRuleSend": "splk-activity-logs-eventhub-auth-send",
+            "consumerGroupName": "splk-resource-logs-consumer-group",
+            "eventHubAuthRuleListen": "splk-resource-logs-eventhub-auth-listen",
+            "eventHubAuthRuleSend": "splk-resource-logs-eventhub-auth-send",
             "eventHubMaxThroughputUnits": 40,
-            "eventHubName": "splk-activity-logs-eventhub",
-            "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkActLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
-            "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkActLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
-            "hostingPlanName": "[concat('splk-act-logs-hosting-plan', uniqueString(parameters('scdmInputId')))]",
-            "backupStorageAccountName": "[if(equals(parameters('altBackupStorageName'), ''), concat('splkactstr', uniqueString(parameters('scdmInputId'))), parameters('altBackupStorageName'))]",
+            "eventHubName": "splk-resource-logs-eventhub",
+            "eventHubNamespaceName": "[if(equals(parameters('altEventHubNamespaceName'), ''), concat('splkResLogsEH', parameters('scdmInputId')), parameters('altEventHubNamespaceName'))]",
+            "functionName": "[if(equals(parameters('altFunctionName'), ''), concat('splkResLogsFn', parameters('scdmInputId')), parameters('altFunctionName'))]",
+            "hostingPlanName": "[concat('splk-res-logs-hosting-plan', uniqueString(parameters('scdmInputId')))]",
+            "backupStorageAccountName": "[if(equals(parameters('altBackupStorageName'), ''), concat('splkresstr', uniqueString(parameters('scdmInputId'))), parameters('altBackupStorageName'))]",
             "logsStorageAccountName": "[if(equals(parameters('altLogsStorageName'), ''), concat('splklogstr', uniqueString(parameters('scdmInputId'))), parameters('altLogsStorageName'))]",
             "jobsStorageAccountName": "[if(equals(parameters('altJobsStorageName'), ''), concat('splkjobstr', uniqueString(parameters('scdmInputId'))), parameters('altJobsStorageName'))]"
           },
@@ -535,7 +535,7 @@
                     },
                     {
                       "name": "SourceType",
-                      "value": "azure:monitor:activity"
+                      "value": "azure:monitor:resource"
                     },
                     {
                       "name": "Region",
