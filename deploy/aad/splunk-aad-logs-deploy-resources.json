@@ -367,7 +367,8 @@
                   "name": "[variables('eventHubAuthRuleListen')]",
                   "dependsOn": [
                     "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
-                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
+                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
+                    "[resourceId('Microsoft.EventHub/namespaces/authorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleSend'))]"
                   ],
                   "properties": {
                     "rights": [
