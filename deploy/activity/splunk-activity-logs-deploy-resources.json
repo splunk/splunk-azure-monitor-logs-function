@@ -242,6 +242,7 @@
               },
               "kind": "StorageV2",
               "properties": {
+                "supportsHttpsTrafficOnly": true,
                 "accessTier": "Cool",
                 "allowBlobPublicAccess": false,
                 "minimumTlsVersion": "TLS1_2"
@@ -258,6 +259,7 @@
               },
               "kind": "StorageV2",
               "properties": {
+                "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
                 "minimumTlsVersion": "TLS1_2"
               }
@@ -297,6 +299,7 @@
               },
               "kind": "Storage",
               "properties": {
+                "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
                 "minimumTlsVersion": "TLS1_2"
               }
@@ -367,7 +370,8 @@
                   "name": "[variables('eventHubAuthRuleListen')]",
                   "dependsOn": [
                     "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
-                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
+                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
+                    "[resourceId('Microsoft.EventHub/namespaces/authorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleSend'))]"
                   ],
                   "properties": {
                     "rights": [
