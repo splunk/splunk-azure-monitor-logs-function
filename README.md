@@ -6,7 +6,7 @@ This repository also includes
 * PowerShell scripts that enable diagnostic settings on Azure resources
 
 ## Set up the Dev Environment
-
+Ideally, you should be setting up this repository during [the onboarding process](https://splunk.atlassian.net/wiki/spaces/PROD/pages/1078171273052/Engineer+Onboarding+-+Azure+Push-based) for full context:
 ### Install tools
 1. Azure Functions Core Tools (Install latest version).
    * https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cmacos%2Ccsharp%2Cportal%2Cbash#v4
@@ -20,7 +20,7 @@ This repository also includes
    Needed modules in Powershell
    * Run `Install-Module -Name Pester` (unit tests)
    * Run `Install-Module -Name Az -AllowClobber -Scope CurrentUser`
-4. Make sure you have Node 14.
+4. Make sure you have Node 16.
 
 ### Local configuration
 Create a file named `local.settings.json` at the root of the repository and fill in the appropriate values. The values
