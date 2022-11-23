@@ -21,7 +21,12 @@ Ideally, you should be setting up this repository during [the onboarding process
    * Run `Install-Module -Name Pester` (unit tests)
    * Run `Install-Module -Name Az -AllowClobber -Scope CurrentUser`
 4. Make sure you have Node 16.
-
+   
+   To be compatible with other repositories using different version of Node, it is recommended to use [Node Version Manager](https://github.com/nvm-sh/nvm)
+   ```bash
+   nvm install 16
+   nvm use 16
+   ```
 ### Local configuration
 Create a file named `local.settings.json` at the root of the repository and fill in the appropriate values. The values
 get set as environment variables in the function.
