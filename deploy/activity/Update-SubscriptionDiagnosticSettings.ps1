@@ -113,32 +113,18 @@ param (
     [string] $TenantId
 )
 
-# Infer EventHubAuthRuleId if required
-if ($PSBoundParameters.ContainsKey('DestinationSubscriptionId')) {
-    $EventHubAuthRuleId = "/subscriptions/${DestinationSubscriptionId}/resourceGroups/${ExistingResourceGroupName}/providers/Microsoft.EventHub/namespaces/splkActLogsEH${SCDMInputId}/authorizationRules/splk-activity-logs-eventhub-auth-send"
-    Write-Host "Using Event Hub authorization rule id '${EventHubAuthRuleId}'"
-}
-
 function Set-DiagnosticSetting {
     param (
         $SubscriptionIdToEnableDiagSetting
     )
     Write-Host "Creating and setting diagnostic setting on subscription '${SubscriptionIdToEnableDiagSetting}'"
 
-    if (Get-DiagnosticSettingExists -SubscriptionId $SubscriptionIdToEnableDiagSetting) {
-        # or shall we remove and add it?
-        Write-Host "Skipping setting diagnostic setting for subscription '${SubscriptionIdToEnableDiagSetting}'. Already exists."
-        return;
-    }
-
-    $setting = New-AzDiagnosticSetting `
+    New-AzSubscriptionDiagnosticSetting `
         -Name $diagnosticSettingName `
         -SubscriptionId $SubscriptionIdToEnableDiagSetting `
         -EventHubAuthorizationRuleId $EventHubAuthRuleId `
         -EventHubName $EventHubName `
-        -Setting $allDiagSettings
-
-    Set-AzDiagnosticSetting -InputObject $setting -ErrorAction Stop
+        -Log $subscriptionLogSettingsObjects
 
     Write-Host "Finished creating and setting diagnostic setting for subscription '${SubscriptionIdToEnableDiagSetting}'"
 }
@@ -155,7 +141,7 @@ function Remove-DiagnosticSetting {
         return;
     }
 
-    Remove-AzDiagnosticSetting -SubscriptionId $SubscriptionIdToRemoveDiagSetting -Name $diagnosticSettingName -ErrorAction Stop
+    Remove-AzSubscriptionDiagnosticSetting -SubscriptionId $SubscriptionIdToRemoveDiagSetting -Name $diagnosticSettingName -ErrorAction Stop
 
     Write-Host "Finished removing diagnostic setting from subscription '${SubscriptionIdToRemoveDiagSetting}'."
 }
@@ -166,7 +152,7 @@ function Get-DiagnosticSettingExists {
         $SubscriptionId
     )
 
-    $existingDiagSettings = Get-AzDiagnosticSetting -SubscriptionId $SubscriptionId -ErrorAction Stop
+    $existingDiagSettings = Get-AzSubscriptionDiagnosticSetting -SubscriptionId $SubscriptionId -ErrorAction Stop
     foreach ($existingDiagSetting in $existingDiagSettings) {
         if ($existingDiagSetting.Name.ToLower().Equals($diagnosticSettingName.ToLower())) {
             return $true;
@@ -176,11 +162,17 @@ function Get-DiagnosticSettingExists {
     return $false;
 }
 
+# Infer EventHubAuthRuleId if required
+if ($PSBoundParameters.ContainsKey('DestinationSubscriptionId')) {
+    $EventHubAuthRuleId = "/subscriptions/${DestinationSubscriptionId}/resourceGroups/${ExistingResourceGroupName}/providers/Microsoft.EventHub/namespaces/splkActLogsEH${SCDMInputId}/authorizationRules/splk-activity-logs-eventhub-auth-send"
+    Write-Host "Using Event Hub authorization rule id '${EventHubAuthRuleId}'"
+}
+
 try {
-    # Get all diagnostic settings for a subscription so we can enable them
-    $allDiagSettings = @()
-    Get-AzSubscriptionDiagnosticSettingCategory -ErrorAction Stop | ForEach-Object {
-        $allDiagSettings += (New-AzDiagnosticDetailSetting -Log -Category $_.Name -Enabled -ErrorAction Stop)
+    # Create log setting object for all categories of subscription diagnostic settings
+    $subscriptionLogSettingsObjects = @()
+    Get-AzEventCategory -ErrorAction Stop | ForEach-Object {
+        $subscriptionLogSettingsObjects += (New-AzDiagnosticSettingSubscriptionLogSettingsObject -Category $_.Value -Enabled $true -ErrorAction Stop)
     }
     $diagnosticSettingName = "splunk-activity-logs-" + $SCDMInputId
 
