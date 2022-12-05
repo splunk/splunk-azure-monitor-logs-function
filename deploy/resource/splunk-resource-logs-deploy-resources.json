@@ -421,7 +421,7 @@
             {
               "type": "Microsoft.Web/serverfarms",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 2))]",
-              "apiVersion": "2020-12-01",
+              "apiVersion": "2022-03-01",
               "name": "[variables('hostingPlanName')]",
               "location": "[parameters('region')]",
               "kind": "functionapp",
@@ -461,7 +461,7 @@
               "name": "[variables('functionName')]",
               "type": "Microsoft.Web/sites",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 1))]",
-              "apiVersion": "2020-12-01",
+              "apiVersion": "2022-03-01",
               "location": "[parameters('region')]",
               "kind": "functionapp,linux",
               "dependsOn": [
