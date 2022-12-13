@@ -135,6 +135,147 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPayload).to.equal(actualPayload);
     });
 
+    it('should make correct POST request with azure resource logs input', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': '/SUBSCRIPTIONS/C83C2282-2E21-4F64-86AE-FDFA66B673EB/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar',
+          resourceId: '/SUBSCRIPTIONS/C83C2282-2E21-4F64-86AE-FDFA66B673EB/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        },
+        index: 'bastion'
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should be default index if ResourceTypeDestinationIndex is undefined', async () => {
+      sandbox.stub(process.env, 'ResourceTypeDestinationIndex').value(undefined);
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': '/SUBSCRIPTIONS/C83C2282-2E21-4F64-86AE-FDFA66B673EB/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar',
+          resourceId: '/SUBSCRIPTIONS/C83C2282-2E21-4F64-86AE-FDFA66B673EB/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should be default index if ResourceTypeDestinationIndex is undefined and resourceId is not provided ', async () => {
+      sandbox.stub(process.env, 'ResourceTypeDestinationIndex').value(undefined);
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should be default index if ResourceTypeDestinationIndex is not provided ', async () => {
+      const removeResourceTypeDestinationIndexEnv = 'ResourceTypeDestinationIndex';
+      const { [removeResourceTypeDestinationIndexEnv]: removedKey, ...mockEnvCopy } = mockEnv;
+
+      sandbox.stub(process, 'env').value(mockEnvCopy);
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+
+    it('should switch to default index when resource id is not provided', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+
     it('should make correct POST request with eventhub metadata if enabled', async () => {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });

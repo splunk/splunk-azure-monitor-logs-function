@@ -28,7 +28,7 @@ const WRITE_TIME = 30 * 1000;
 const BUFFER = 30 * 1000;
 const MAX_RETRIES = 2;
 const AZURE_LOG_LIMIT = 32000;
-
+const RESOURCE_LOG_TYPE_DELIMETER = "PROVIDERS/";
 /**
  * Entrypoint for function that handles a list of events.
  * @param context The context of the current function execution.
@@ -180,6 +180,7 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: Conte
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) to Splunk events.`);
   const splunkEvents: SplunkEvent[] = [];
   const enableEventhubMetadata = enabledEventhubMetadata();
+  const resourceTypeToIndexMap = getResourceTypeToIndexMapping(log);
 
   for (let i = 0;i < eventHubMessages.length; i++) {
     const eventHubMessage = eventHubMessages[i];
@@ -188,18 +189,41 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: Conte
       if (enableEventhubMetadata) {
         record.__eventhub_metadata = bindingData.systemPropertiesArray[i];
       }
-      splunkEvents.push(toSplunkEvent(record));
+      splunkEvents.push(toSplunkEvent(record, resourceTypeToIndexMap));
     }
   }
   log.info(`Mapped ${eventHubMessages.length} EventHub message(s) to ${splunkEvents.length} Splunk event(s).`);
   return splunkEvents;
 }
 
+
+function getResourceTypeToIndexMapping(log: Logger): Map<string, string> {
+  const resourceTypeIndexEnvVar = process.env.ResourceTypeDestinationIndex || '';
+  let resourceTypeToIndexMap;
+  let resourceTypeToIndexWithLowerCaseKeys: Map<string, string> = new Map<string, string>();
+  
+  if (resourceTypeIndexEnvVar !== '') {
+    try {
+      resourceTypeToIndexMap = JSON.parse(resourceTypeIndexEnvVar)
+
+      for (const key in resourceTypeToIndexMap) {
+        let value = resourceTypeToIndexMap[key]
+        resourceTypeToIndexWithLowerCaseKeys.set(key.toLowerCase(), value);
+      }
+
+    } catch (error: any) {
+      log.error(`Failed to parse resource type destination index. Error: ${error.stack}`);
+    }
+  }
+  return resourceTypeToIndexWithLowerCaseKeys;
+}
+
 /**
  * Map a single record into a Splunk event.
  * @param record the record to map.
+ * @param resourceTypeToIndexMap Map object of resource log type to index.
  */
-function toSplunkEvent(record: any): SplunkEvent {
+function toSplunkEvent(record: any, resourceTypeToIndexMap: Map<string, string>): SplunkEvent {
   let splunkEvent: SplunkEvent = {
     event: record,
     source: getSource(),
@@ -214,7 +238,41 @@ function toSplunkEvent(record: any): SplunkEvent {
     splunkEvent.time = timeStamp;
   }
 
+  const index = tryExtractIndexForResourceLogs(record, resourceTypeToIndexMap);
+  if (index) {
+    splunkEvent.index = index;
+  }
+
   return splunkEvent;
+}
+
+/**
+ * Process resource type index
+ * @param record the record to map.
+ * @param resourceTypeToIndexMap Map object of resource log type to index.
+ */
+function tryExtractIndexForResourceLogs(record: any, resourceTypeToIndexMap: Map<string, string>): string | undefined {
+  if (resourceTypeToIndexMap !== undefined) {
+    if (record.hasOwnProperty('resourceId')) {
+      let eventResourceType = extractResourceType(record.resourceId, RESOURCE_LOG_TYPE_DELIMETER);
+      
+      if (resourceTypeToIndexMap.has(eventResourceType)) {
+        return resourceTypeToIndexMap.get(eventResourceType);
+      }
+    }
+  }
+}
+
+/**
+ * Try to extract resource log type from the resource Id
+ * @param resourceId the resourceId.
+ * @param delimiter the boundary after which the resource provider namespace starts - see below
+ * /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{serviceType}/{resourceName}
+ */
+function extractResourceType(resourceId: string, delimiter: string): string {
+  const resourceTypeWithResourceName = resourceId.replace(new RegExp('.*' + delimiter), '');
+  // Extract {resourceProviderNamespace}/{serviceType} from {resourceProviderNamespace}/{serviceType}/{resourceName}
+  return resourceTypeWithResourceName.substring(0, resourceTypeWithResourceName.lastIndexOf("/")).toLowerCase();
 }
 
 /**
@@ -345,6 +403,7 @@ type SplunkEvent = {
   event: object,
   source: string,
   sourcetype: string | undefined,
+  index?: string,
   fields: object,
   time?: number,
 };
