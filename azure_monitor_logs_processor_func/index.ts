@@ -267,11 +267,11 @@ function tryExtractIndexForResourceLogs(record: any, resourceTypeToIndexMap: Map
  * Try to extract resource log type from the resource Id
  * @param resourceId the resourceId.
  * @param delimiter the boundary after which the resource provider namespace starts - see below
- * /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{serviceType}/{resourceName}
+ * /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/resourceProviderNamespace}/{resourceType}/{resourceName}
  */
 function extractResourceType(resourceId: string, delimiter: string): string {
   const resourceTypeWithResourceName = resourceId.replace(new RegExp('.*' + delimiter), '');
-  // Extract {resourceProviderNamespace}/{serviceType} from {resourceProviderNamespace}/{serviceType}/{resourceName}
+  // Extract {resourceProviderNamespace}/{resourceType} from {resourceProviderNamespace}/{resourceType}/{resourceName}
   return resourceTypeWithResourceName.substring(0, resourceTypeWithResourceName.lastIndexOf("/")).toLowerCase();
 }
 
