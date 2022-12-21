@@ -180,7 +180,7 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: Conte
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) to Splunk events.`);
   const splunkEvents: SplunkEvent[] = [];
   const enableEventhubMetadata = enabledEventhubMetadata();
-  const resourceTypeToIndexMap = getResourceTypeToIndexMapping(log);
+  const resourceTypeToIndexMap = getResourceTypeToIndexMapping();
 
   for (let i = 0;i < eventHubMessages.length; i++) {
     const eventHubMessage = eventHubMessages[i];
@@ -197,22 +197,21 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: Conte
 }
 
 
-function getResourceTypeToIndexMapping(log: Logger): Map<string, string> {
+function getResourceTypeToIndexMapping(): Map<string, string> {
   const resourceTypeIndexEnvVar = process.env.ResourceTypeDestinationIndex || '';
-  let resourceTypeToIndexMap;
   let resourceTypeToIndexWithLowerCaseKeys: Map<string, string> = new Map<string, string>();
   
   if (resourceTypeIndexEnvVar !== '') {
-    try {
-      resourceTypeToIndexMap = JSON.parse(resourceTypeIndexEnvVar)
+    const tokenizedKeyValPairs = resourceTypeIndexEnvVar.split(";")
 
-      for (const key in resourceTypeToIndexMap) {
-        let value = resourceTypeToIndexMap[key]
-        resourceTypeToIndexWithLowerCaseKeys.set(key.toLowerCase(), value);
+    for (const token of tokenizedKeyValPairs) {
+      const keyValPair = token.split("=")
+
+      if (keyValPair.length === 2) {
+        const key = keyValPair[0].trim().toLowerCase();
+        const val = keyValPair[1].trim();
+        resourceTypeToIndexWithLowerCaseKeys.set(key, val)
       }
-
-    } catch (error: any) {
-      log.error(`Failed to parse resource type destination index. Error: ${error.stack}`);
     }
   }
   return resourceTypeToIndexWithLowerCaseKeys;

@@ -34,7 +34,7 @@ export const mockEnv = {
   DataManagerInputId: 'mock-input-id',
   SPLUNK_BATCH_MAX_SIZE_BYTES: 1 * 1000 * 1000,
   EnableEventhubMetadata: "false",
-  ResourceTypeDestinationIndex: '{"Microsoft.Network/bastionHosts":"bastion"}'
+  ResourceTypeDestinationIndex: "Microsoft.Network/bastionHosts=bastion"
 };
 
 const createEvent = (size: number): string => {
