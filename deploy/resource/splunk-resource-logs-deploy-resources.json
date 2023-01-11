@@ -31,7 +31,7 @@
     },
     "variables": {
         "resourceGroupNamePrefix": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'), '-')]",
-        "resourceDeploymentPrefix": "[concat('SplunkDMDataIngest', parameters('scdmInputId'), '-')]",
+        "resourceDeploymentPrefix": "[concat('SplkDM-', parameters('scdmInputId'), '-')]",
         "scdmInputTag": { "SplunkDMInputId": "[parameters('scdmInputId')]" },
         "allResourceTags": "[union(variables('scdmInputTag'), parameters('resourceTags'))]"
     },
@@ -163,7 +163,7 @@
                         "eventHubAuthRuleSend": "splk-resource-logs-eventhub-auth-send",
                         "eventHubMaxThroughputUnits": 40,
                         "eventHubName": "splk-resource-logs-eventhub",
-                        "eventHubNamespaceNamePrefix": "[concat('splkResLogsEH', uniqueString(parameters('scdmInputId')), '-')]",
+                        "eventHubNamespaceName": "[concat('splkResLogsEH', uniqueString(parameters('scdmInputId'), parameters('region')))]",
                         "functionName": "[concat('splkResLogsFn', uniqueString(parameters('scdmInputId'), parameters('region')))]",
                         "hostingPlanName": "[concat('splk-res-logs-hosting-plan', uniqueString(parameters('scdmInputId'), parameters('region')))]",
                         "backupStorageAccountName": "[concat('splkresstr', uniqueString(parameters('scdmInputId'), parameters('region')))]",
@@ -285,7 +285,7 @@
                             "type": "Microsoft.EventHub/namespaces",
                             "tags": "[parameters('allResourceTags')]",
                             "apiVersion": "2021-11-01",
-                            "name": "[concat(variables('eventHubNamespaceNameprefix'), parameters('region'))]",
+                            "name": "[variables('eventHubNamespaceName')]",
                             "location": "[parameters('region')]",
                             "properties": {
                                 "isAutoInflateEnabled": true,
@@ -304,7 +304,7 @@
                                         "partitionCount": 32
                                     },
                                     "dependsOn": [
-                                        "[resourceId('Microsoft.EventHub/namespaces', concat(variables('eventHubNamespaceNameprefix'), parameters('region')))]"
+                                        "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]"
                                     ],
                                     "resources": [
                                         {
@@ -323,9 +323,9 @@
                                     "apiVersion": "2021-11-01",
                                     "name": "[variables('eventHubAuthRuleListen')]",
                                     "dependsOn": [
-                                        "[resourceId('Microsoft.EventHub/namespaces', concat(variables('eventHubNamespaceNameprefix'), parameters('region')))]",
-                                        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', concat(variables('eventHubNamespaceNameprefix'), parameters('region')), variables('eventHubName'))]",
-                                        "[resourceId('Microsoft.EventHub/namespaces/authorizationRules', concat(variables('eventHubNamespaceNameprefix'), parameters('region')), variables('eventHubAuthRuleSend'))]"
+                                        "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
+                                        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
+                                        "[resourceId('Microsoft.EventHub/namespaces/authorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleSend'))]"
                                     ],
                                     "properties": {
                                         "rights": [
@@ -338,8 +338,8 @@
                                     "apiVersion": "2021-11-01",
                                     "name": "[variables('eventHubAuthRuleSend')]",
                                     "dependsOn": [
-                                        "[resourceId('Microsoft.EventHub/namespaces', concat(variables('eventHubNamespaceNameprefix'), parameters('region')))]",
-                                        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', concat(variables('eventHubNamespaceNameprefix'), parameters('region')), variables('eventHubName'))]"
+                                        "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
+                                        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
                                     ],
                                     "properties": {
                                         "rights": [
@@ -353,9 +353,9 @@
                             "type": "Microsoft.EventHub/namespaces/providers/diagnosticSettings",
                             "tags": "[parameters('allResourceTags')]",
                             "apiVersion": "2017-05-01-preview",
-                            "name": "[concat(variables('eventHubNamespaceNameprefix'), parameters('region'), '/Microsoft.Insights/', 'splunk-eventhub-namespace-diagnostic-settings')]",
+                            "name": "[concat(variables('eventHubNamespaceName'), '/Microsoft.Insights/', 'splunk-eventhub-namespace-diagnostic-settings')]",
                             "dependsOn": [
-                                "[resourceId('Microsoft.EventHub/namespaces', concat(variables('eventHubNamespaceNameprefix'), parameters('region')))]",
+                                "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
                                 "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
                             ],
                             "properties": {
@@ -419,7 +419,7 @@
                             "location": "[parameters('region')]",
                             "kind": "functionapp,linux",
                             "dependsOn": [
-                                "[resourceId('Microsoft.EventHub/namespaces/eventhubs', concat(variables('eventHubNamespaceNameprefix'), parameters('region')), variables('eventHubName'))]",
+                                "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
                                 "[resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName'))]",
                                 "[resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName'))]",
                                 "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
@@ -469,7 +469,7 @@
                                         },
                                         {
                                             "name": "EventHubConnection",
-                                            "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', concat(variables('eventHubNamespaceNameprefix'), parameters('region')), variables('eventHubAuthRuleListen')), '2021-11-01').primaryConnectionString]"
+                                            "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleListen')), '2021-11-01').primaryConnectionString]"
                                         },
                                         {
                                             "name": "FailedEventsStorageConnection",
