@@ -330,12 +330,13 @@
             {
               "type": "Microsoft.EventHub/namespaces",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 5))]",
-              "apiVersion": "2021-11-01",
+              "apiVersion": "2022-01-01-preview",
               "name": "[variables('eventHubNamespaceName')]",
               "location": "[parameters('region')]",
               "properties": {
                 "isAutoInflateEnabled": true,
-                "maximumThroughputUnits": "[variables('eventHubMaxThroughputUnits')]"
+                "maximumThroughputUnits": "[variables('eventHubMaxThroughputUnits')]",
+                "minimumTlsVersion": "1.2"
               },
               "sku": {
                 "name": "Standard",
