@@ -6,7 +6,6 @@ This repository also includes
 * PowerShell scripts that enable diagnostic settings on Azure resources
 
 ## Set up the Dev Environment
-Ideally, you should be setting up this repository during [the onboarding process](https://splunk.atlassian.net/wiki/spaces/PROD/pages/1078171273052/Engineer+Onboarding+-+Azure+Push-based) for full context:
 ### Install tools
 1. Azure Functions Core Tools (Install latest version).
    * https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cmacos%2Ccsharp%2Cportal%2Cbash#v4
