@@ -178,6 +178,7 @@ try {
 
     # Get all subscriptions in tenant
     Write-Host "Getting subscriptions for tenant '${TenantId}'."
+    Set-AzContext -Tenant $TenantId
     $subscriptions = Get-AzSubscription -TenantId $TenantId -ErrorAction Stop
     Write-Host "Found subscriptions for tenant: '${subscriptions}'."
 
