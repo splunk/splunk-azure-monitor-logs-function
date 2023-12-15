@@ -614,8 +614,11 @@
               ],
               "properties": {
                 "clientAffinityEnabled": false,
+                "httpsOnly": true,
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
                 "siteConfig": {
+                  "minTlsVersion": "1.2",
+                  "ftpsState": "Disabled",
                   "cors": {
                     "allowedOrigins": [
                       "*"
