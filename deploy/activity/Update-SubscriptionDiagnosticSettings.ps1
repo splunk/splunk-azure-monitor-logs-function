@@ -178,6 +178,9 @@ try {
 
     # Get all subscriptions in tenant
     Write-Host "Getting subscriptions for tenant '${TenantId}'."
+    # Preserve the current subscription context to later restore it
+    $DestinationSubscriptionContext = Get-AzContext
+
     Set-AzContext -Tenant $TenantId
     $subscriptions = Get-AzSubscription -TenantId $TenantId -ErrorAction Stop
     Write-Host "Found subscriptions for tenant: '${subscriptions}'."
@@ -194,4 +197,7 @@ try {
 catch {
     Write-Error -Message "There was an error updating diagnostic settings. Please resolve the problem and retry."
     Write-Error -Exception $PSItem.Exception
+}
+finally {
+    Set-AzContext -Context $DestinationSubscriptionContext
 }
