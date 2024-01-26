@@ -114,6 +114,7 @@ Describe "Azure ARM Template Unit Tests" {
                 "Microsoft.Resources/subscriptions/resourcegroups/read", `
                 "Microsoft.Storage/storageAccounts/blobServices/containers/read", `
                 "Microsoft.Storage/storageAccounts/read", `
+                "Microsoft.Storage/storageAccounts/managementPolicies/read", `
                 "Microsoft.Web/sites/read", `
                 "Microsoft.Web/serverfarms/read", `
                 "Microsoft.Web/sites/sourcecontrols/read"

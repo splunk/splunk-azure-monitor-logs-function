@@ -54,7 +54,8 @@ function Test-ARMTemplates {
 
             process {
                 Write-Information -MessageData "Running validation tests on $TemplateFile" -InformationAction Continue
-                $testResults = Test-AzTemplate -TemplatePath $TemplateFile
+                # As we cannot update apiVersions to 2 years old max the tests validating it will be skipped for patch release
+                $testResults = Test-AzTemplate -Skip 'apiVersions-Should-Be-Recent','apiVersions-Should-Be-Recent-In-Reference-Functions' -TemplatePath $TemplateFile
                 Write-Information -MessageData "Test Complete" -InformationAction Continue
                 $failures = $testResults | Where-Object { -not $_.Passed }
                 $failCount = ($failures | Measure-Object).Count

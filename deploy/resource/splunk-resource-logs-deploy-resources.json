@@ -48,7 +48,7 @@
       "type": "object",
       "defaultValue": {}
     },
-    "enableEventhubMetadata":{
+    "enableEventhubMetadata": {
       "type": "string",
       "defaultValue": "false"
     }
@@ -66,7 +66,7 @@
       "location": "[parameters('region')]",
       "name": "[variables('resourceGroupName')]",
       "tags": "[union(variables('allResourceTags'), createObject('SplunkDMDeletionOrder', 10))]",
-      "condition":"[equals(parameters('existingResourceGroupName'), '')]",
+      "condition": "[equals(parameters('existingResourceGroupName'), '')]",
       "properties": {}
     },
     {
@@ -205,6 +205,7 @@
                       "Microsoft.Resources/subscriptions/resourcegroups/read",
                       "Microsoft.Storage/storageAccounts/blobServices/containers/read",
                       "Microsoft.Storage/storageAccounts/read",
+                      "Microsoft.Storage/storageAccounts/managementPolicies/read",
                       "Microsoft.Web/sites/read",
                       "Microsoft.Web/serverfarms/read",
                       "Microsoft.Web/sites/sourcecontrols/read"
@@ -242,9 +243,60 @@
               },
               "kind": "StorageV2",
               "properties": {
+                "supportsHttpsTrafficOnly": true,
                 "accessTier": "Cool",
                 "allowBlobPublicAccess": false,
                 "minimumTlsVersion": "TLS1_2"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+              "apiVersion": "2022-04-01",
+              "name": "[concat(variables('logsStorageAccountName'), '/default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageAccountName'))]"
+              ],
+              "properties": {
+                "policy": {
+                  "rules": [
+                    {
+                      "name": "DeleteLogsAfterSixtyDays",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "delete": {
+                              "daysAfterModificationGreaterThan": 60
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [ "appendBlob" ],
+                          "prefixMatch": [ "insights-logs-" ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "DeleteMetricsAfterSixtyDays",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "delete": {
+                              "daysAfterModificationGreaterThan": 60
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [ "appendBlob" ],
+                          "prefixMatch": [ "insights-metrics-" ]
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             },
             {
@@ -258,14 +310,65 @@
               },
               "kind": "StorageV2",
               "properties": {
+                "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
                 "minimumTlsVersion": "TLS1_2"
               }
             },
             {
+              "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+              "apiVersion": "2021-04-01",
+              "name": "[concat(variables('backupStorageAccountName'), '/default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName'))]"
+              ],
+              "properties": {
+                "policy": {
+                  "rules": [
+                    {
+                      "name": "DeleteLogsAfterSixtyDays",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "delete": {
+                              "daysAfterModificationGreaterThan": 60
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [ "appendBlob" ],
+                          "prefixMatch": [ "insights-logs-" ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "DeleteMetricsAfterSixtyDays",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "delete": {
+                              "daysAfterModificationGreaterThan": 60
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [ "appendBlob" ],
+                          "prefixMatch": [ "insights-metrics-" ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('backupStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName'))]",
@@ -276,11 +379,7 @@
                 "metrics": [
                   {
                     "category": "AllMetrics",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "days": 60,
-                      "enabled": true
-                    }
+                    "enabled": true
                   }
                 ]
               }
@@ -292,19 +391,70 @@
               "name": "[variables('jobsStorageAccountName')]",
               "location": "[parameters('region')]",
               "sku": {
-                  "name": "Standard_LRS",
-                  "tier": "Standard"
+                "name": "Standard_LRS",
+                "tier": "Standard"
               },
               "kind": "Storage",
               "properties": {
+                "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
                 "minimumTlsVersion": "TLS1_2"
               }
             },
             {
+              "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+              "apiVersion": "2021-04-01",
+              "name": "[concat(variables('jobsStorageAccountName'), '/default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName'))]"
+              ],
+              "properties": {
+                "policy": {
+                  "rules": [
+                    {
+                      "name": "DeleteLogsAfterSixtyDays",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "delete": {
+                              "daysAfterModificationGreaterThan": 60
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [ "appendBlob" ],
+                          "prefixMatch": [ "insights-logs-" ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "DeleteMetricsAfterSixtyDays",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "delete": {
+                              "daysAfterModificationGreaterThan": 60
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [ "appendBlob" ],
+                          "prefixMatch": [ "insights-metrics-" ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('jobsStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName'))]",
@@ -315,11 +465,7 @@
                 "metrics": [
                   {
                     "category": "AllMetrics",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "days": 60,
-                      "enabled": true
-                    }
+                    "enabled": true
                   }
                 ]
               }
@@ -327,12 +473,13 @@
             {
               "type": "Microsoft.EventHub/namespaces",
               "tags": "[union(parameters('allResourceTags'), createObject('SplunkDMDeletionOrder', 5))]",
-              "apiVersion": "2021-11-01",
+              "apiVersion": "2022-01-01-preview",
               "name": "[variables('eventHubNamespaceName')]",
               "location": "[parameters('region')]",
               "properties": {
                 "isAutoInflateEnabled": true,
-                "maximumThroughputUnits": "[variables('eventHubMaxThroughputUnits')]"
+                "maximumThroughputUnits": "[variables('eventHubMaxThroughputUnits')]",
+                "minimumTlsVersion": "1.2"
               },
               "sku": {
                 "name": "Standard",
@@ -367,7 +514,8 @@
                   "name": "[variables('eventHubAuthRuleListen')]",
                   "dependsOn": [
                     "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
-                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
+                    "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
+                    "[resourceId('Microsoft.EventHub/namespaces/authorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleSend'))]"
                   ],
                   "properties": {
                     "rights": [
@@ -394,7 +542,7 @@
             {
               "type": "Microsoft.EventHub/namespaces/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('eventHubNamespaceName'), '/Microsoft.Insights/', 'splunk-eventhub-namespace-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
@@ -405,11 +553,7 @@
                 "metrics": [
                   {
                     "category": "AllMetrics",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "days": 60,
-                      "enabled": true
-                    }
+                    "enabled": true
                   }
                 ]
               }
@@ -433,7 +577,7 @@
             {
               "type": "Microsoft.Web/serverfarms/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('hostingPlanName'), '/Microsoft.Insights/', 'splunk-hosting-plan-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
@@ -444,11 +588,7 @@
                 "metrics": [
                   {
                     "category": "AllMetrics",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "days": 60,
-                      "enabled": true
-                    }
+                    "enabled": true
                   }
                 ]
               }
@@ -468,14 +608,17 @@
               ],
               "properties": {
                 "clientAffinityEnabled": false,
+                "httpsOnly": true,
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
                 "siteConfig": {
+                  "minTlsVersion": "1.2",
+                  "ftpsState": "Disabled",
                   "cors": {
                     "allowedOrigins": [
                       "*"
                     ]
                   },
-                  "linuxFxVersion": "node|16",
+                  "linuxFxVersion": "node|18",
                   "appSettings": [
                     {
                       "name": "FUNCTIONS_EXTENSION_VERSION",
@@ -553,7 +696,7 @@
             {
               "type": "Microsoft.Web/sites/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('functionName'), '/Microsoft.Insights/', 'splunk-azure-function-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', variables('functionName'))]",
@@ -564,21 +707,13 @@
                 "logs": [
                   {
                     "category": "FunctionAppLogs",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "days": 60,
-                      "enabled": true
-                    }
+                    "enabled": true
                   }
                 ],
                 "metrics": [
                   {
                     "category": "AllMetrics",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "days": 60,
-                      "enabled": true
-                    }
+                    "enabled": true
                   }
                 ]
               }
