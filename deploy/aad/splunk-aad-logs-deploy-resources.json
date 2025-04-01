@@ -632,7 +632,7 @@
                       "*"
                     ]
                   },
-                  "linuxFxVersion": "node|18",
+                  "linuxFxVersion": "node|20",
                   "appSettings": [
                     {
                       "name": "FUNCTIONS_EXTENSION_VERSION",

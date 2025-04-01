@@ -1,6 +1,6 @@
-# Image running node 18, the runtime version Azure Function uses for TypeScript
+# Image running node 20, the runtime version Azure Function uses for TypeScript (GA until April 30, 2026)
 # https://docs.microsoft.com/en-us/azure/azure-functions/functions-versions
-image: docker-hub.repo.splunkdev.net/node:18
+image: docker-hub.repo.splunkdev.net/node:20
 
 # This folder is cached between builds
 # https://docs.gitlab.com/ee/ci/yaml/index.html#cache
@@ -23,15 +23,15 @@ stages:
   - deploy-prd
 
 .before_script_common: &before_script_common
-    - creds-helper init
-    - eval $(creds-helper npm --eval artifactory:v2/cloud/role/npm-reader-role)
+  - creds-helper init
+  - eval $(creds-helper npm --eval artifactory:v2/cloud/role/npm-reader-role)
 
 sast-scanner:
   stage: test
   extends: .sast_scan
   variables:
-    SAST_SCANNER: "Semgrep"
-    alert_mode: "policy" # Alert mode turned on to fail on any high vulns
+    SAST_SCANNER: 'Semgrep'
+    alert_mode: 'policy' # Alert mode turned on to fail on any high vulns
 
 oss scan:
   stage: test
@@ -54,9 +54,9 @@ test:
 arm-validate:
   stage: test
   image:
-   name: "mcr.microsoft.com/powershell:latest"
+    name: 'mcr.microsoft.com/powershell:latest'
   script:
-   - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId '$AZURE_ID' -AzureTenant '$AZURE_TENANT' -AzureToken '$AZURE_TOKEN'"
+    - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId '$AZURE_ID' -AzureTenant '$AZURE_TENANT' -AzureToken '$AZURE_TOKEN'"
 
 .build-and-package: &build-and-package
   - npm install
