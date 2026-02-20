@@ -16,13 +16,13 @@ This repository also includes
 2. Azure CLI.
    - https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
    - Run `az login` after installation complete
-3. Make sure you have Node 20.
+3. Make sure you have Node 22.
 
    To be compatible with other repositories using different version of Node, it is recommended to use [Node Version Manager](https://github.com/nvm-sh/nvm)
 
    ```bash
-   nvm install 20
-   nvm use 20
+   nvm install 22
+   nvm use 22
    ```
 
 4. Powershell and modules (Install latest version).

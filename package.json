@@ -17,7 +17,7 @@
     "@azure/functions": "^1.2.3",
     "@types/chai": "4.2.21",
     "@types/mocha": "9.0.0",
-    "@types/node": "^16.7.1",
+    "@types/node": "^22",
     "@types/node-gzip": "^1.1.0",
     "@types/sinon": "^10.0.2",
     "chai": "4.3.4",
@@ -27,7 +27,7 @@
     "rewire": "5.0.0",
     "sinon": "11.1.2",
     "ts-node": "^10.2.1",
-    "typescript": "^4.1.3"
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "axios": "1.13.2",
