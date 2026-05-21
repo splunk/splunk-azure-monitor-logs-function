@@ -15,6 +15,14 @@ Param(
     [Parameter(Mandatory = $false)]
     [string]
     $ServicePrincipalObjectId = 'b03d5072-69eb-4165-b453-c1b1a33de468',
+    # Regions
+    [Parameter(Mandatory = $false)]
+    [array]
+    $Regions = @('westus2', 'westus'),
+    # Location
+    [Parameter(Mandatory = $false)]
+    [string]
+    $Location = $Regions[0],
     # SCDM ID
     [Parameter(Mandatory = $true)]
     [string]

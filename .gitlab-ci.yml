@@ -1,6 +1,6 @@
-# Image running node 18, the runtime version Azure Function uses for TypeScript
+# Image running node 22, the runtime version Azure Function uses for TypeScript (GA until April 30, 2027)
 # https://docs.microsoft.com/en-us/azure/azure-functions/functions-versions
-image: repo.splunk.com/node:18
+image: docker-hub.repo.splunkdev.net/node:22
 
 # This folder is cached between builds
 # https://docs.gitlab.com/ee/ci/yaml/index.html#cache
@@ -22,12 +22,16 @@ stages:
   - deploy-dev
   - deploy-prd
 
+.before_script_common: &before_script_common
+  - creds-helper init
+  - eval $(creds-helper npm --eval artifactory:v2/cloud/role/npm-reader-role)
+
 sast-scanner:
   stage: test
   extends: .sast_scan
   variables:
-    SAST_SCANNER: "Semgrep"
-    alert_mode: "policy" # Alert mode turned on to fail on any high vulns
+    SAST_SCANNER: 'Semgrep'
+    alert_mode: 'policy' # Alert mode turned on to fail on any high vulns
 
 oss scan:
   stage: test
@@ -39,16 +43,20 @@ oss scan:
 
 test:
   script:
+    - *before_script_common
     - npm install
     - npm run build
     - npm test
+  id_tokens:
+    CI_JOB_JWT:
+      aud: $CICD_VAULT_ADDR
 
 arm-validate:
   stage: test
   image:
-   name: "mcr.microsoft.com/powershell:latest"
+    name: 'mcr.microsoft.com/powershell:latest'
   script:
-   - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId $AZURE_ID -AzureTenant $AZURE_TENANT -AzureToken $AZURE_TOKEN"
+    - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId '$AZURE_ID' -AzureTenant '$AZURE_TENANT' -AzureToken '$AZURE_TOKEN'"
 
 .build-and-package: &build-and-package
   - npm install
@@ -60,7 +68,7 @@ arm-validate:
 
 .upload-to-azure: &upload-to-azure
   - curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-  - az login --service-principal -u $AZURE_ID -p $AZURE_TOKEN --tenant $AZURE_TENANT
+  - az login --service-principal -u $AZURE_ID -p=$AZURE_TOKEN --tenant $AZURE_TENANT
   - az account set --subscription $AZURE_SUBSCRIPTION
   - PACKAGE_VERSION=`npm --loglevel silent run get-version`
   - az storage blob upload --account-name $AZURE_STORAGE_ACCOUNT --container-name $AZURE_STORAGE_CONTAINER --file azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip --name ${CI_COMMIT_BRANCH}/${CI_COMMIT_SHORT_SHA}/azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip
@@ -70,8 +78,12 @@ deploy-test:
   stage: deploy-test
   when: manual
   script:
+    - *before_script_common
     - *build-and-package
     - *upload-to-azure
+  id_tokens:
+    CI_JOB_JWT:
+      aud: $CICD_VAULT_ADDR
 
 deploy-dev:
   stage: deploy-dev
@@ -79,14 +91,22 @@ deploy-dev:
     - develop
     - main
   script:
+    - *before_script_common
     - *build-and-package
     - *upload-to-azure
+  id_tokens:
+    CI_JOB_JWT:
+      aud: $CICD_VAULT_ADDR
+
 deploy-prd:
   stage: deploy-prd
   when: manual
   script:
+    - *before_script_common
     - *build-and-package
-    - eval $(creds-helper init)
     - eval $(creds-helper artifactory --eval artifactory:v2/cloud/role/azure-monitor-logs-azure-function-writer-role)
     - PACKAGE_VERSION=`npm --loglevel silent run get-version`
     - curl -u $ARTIFACTORY_AUTHORIZATION -X PUT $ARTIFACTORY_BASE_URL/generic/cloud-data-collection/azure-monitor-logs-azure-function-versions/${PACKAGE_VERSION}/${CI_COMMIT_SHORT_SHA}/azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip -T azure-monitor-logs-azure-function-${PACKAGE_VERSION}.zip
+  id_tokens:
+    CI_JOB_JWT:
+      aud: $CICD_VAULT_ADDR
