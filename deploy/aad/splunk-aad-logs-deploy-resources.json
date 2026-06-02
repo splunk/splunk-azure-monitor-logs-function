@@ -51,6 +51,10 @@
     "enableEventhubMetadata":{
       "type": "string",
       "defaultValue": "false"
+    },
+    "serverfarmsSKU": {
+      "type": "string",
+      "defaultValue": "Y1"
     }
   },
   "variables": {
@@ -122,6 +126,9 @@
           },
           "enableEventhubMetadata": {
             "value": "[parameters('enableEventhubMetadata')]"
+          },
+          "serverfarmsSKU": {
+            "value": "[parameters('serverfarmsSKU')]"
           }
         },
         "template": {
@@ -165,6 +172,9 @@
               "type": "string"
             },
             "enableEventhubMetadata": {
+              "type": "string"
+            },
+            "serverfarmsSKU": {
               "type": "string"
             }
           },
@@ -571,12 +581,10 @@
               "location": "[parameters('region')]",
               "kind": "functionapp",
               "properties": {
-                "computeMode": "Dynamic",
                 "reserved": true
               },
               "sku": {
-                "name": "Y1",
-                "tier": "Dynamic"
+                "name": "[parameters('serverfarmsSKU')]"
               }
             },
             {
@@ -624,7 +632,7 @@
                       "*"
                     ]
                   },
-                  "linuxFxVersion": "node|18",
+                  "linuxFxVersion": "node|22",
                   "appSettings": [
                     {
                       "name": "FUNCTIONS_EXTENSION_VERSION",

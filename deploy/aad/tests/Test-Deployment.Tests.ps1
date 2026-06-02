@@ -6,7 +6,7 @@ Param(
     # Location
     [Parameter(Mandatory = $false)]
     [string]
-    $Location = "East US",
+    $Location = "West US 2",
     # FunctionPackageURL
     [Parameter(Mandatory = $false)]
     [string]
