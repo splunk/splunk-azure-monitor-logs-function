@@ -1,6 +1,6 @@
 {
   "name": "azure-monitor-logs-azure-function",
-  "version": "4.3.0",
+  "version": "4.6.0",
   "scripts": {
     "build": "tsc",
     "build:production": "npm run prestart && npm prune --production",
@@ -30,7 +30,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "axios": "^1.15.1",
+    "axios": "1.17.0",
     "axios-retry": "^4.5.0",
     "moment": "^2.29.4",
     "node-gzip": "^1.1.2"
