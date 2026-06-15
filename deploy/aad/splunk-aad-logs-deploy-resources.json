@@ -614,6 +614,9 @@
               "apiVersion": "2020-12-01",
               "location": "[parameters('region')]",
               "kind": "functionapp,linux",
+              "identity": {
+                "type": "SystemAssigned"
+              },
               "dependsOn": [
                 "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName'))]",
@@ -667,8 +670,8 @@
                       "value": "[variables('eventHubName')]"
                     },
                     {
-                      "name": "EventHubConnection",
-                      "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/AuthorizationRules', variables('eventHubNamespaceName'), variables('eventHubAuthRuleListen')), '2021-11-01').primaryConnectionString]"
+                      "name": "EventHubConnection__fullyQualifiedNamespace",
+                      "value": "[concat(variables('eventHubNamespaceName'), '.servicebus.windows.net')]"
                     },
                     {
                       "name": "FailedEventsStorageConnection",
@@ -706,6 +709,20 @@
                 }
               },
               "resources": []
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/providers/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[concat(variables('eventHubNamespaceName'), '/Microsoft.Authorization/', guid(resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName')), variables('functionName'), 'a638d3c7-ab3a-418d-83e6-5f17a39d4fde'))]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('functionName'))]",
+                "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]"
+              ],
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a638d3c7-ab3a-418d-83e6-5f17a39d4fde')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('functionName')), '2020-12-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              }
             },
             {
               "type": "Microsoft.Web/sites/providers/diagnosticSettings",

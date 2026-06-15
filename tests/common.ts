@@ -28,6 +28,7 @@ export const mockEnv = {
   // The namespace can contain only letters, numbers, and hyphens. The namespace must start with a
   // letter, and it must end with a letter or number.
   EventHubConnection: "key1=val;Endpoint=sb://Mock-0-Namespace1.servicebus.windows.net/;key2=v",
+  EventHubConnection__fullyQualifiedNamespace: "Mock-0-Namespace1.servicebus.windows.net",
   // For testing purposes
   EventHubNamespace: "Mock-0-Namespace1",
   EventHubName: 'mock-eh-name',
