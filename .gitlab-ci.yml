@@ -2,6 +2,16 @@
 # https://docs.microsoft.com/en-us/azure/azure-functions/functions-versions
 image: docker-hub.repo.splunkdev.net/node:22
 
+# Prevent duplicate pipelines: when an MR is open for a branch, run only the
+# MR pipeline and skip the branch push pipeline.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
 # This folder is cached between builds
 # https://docs.gitlab.com/ee/ci/yaml/index.html#cache
 cache:
@@ -21,6 +31,7 @@ stages:
   - deploy-test
   - deploy-dev
   - deploy-prd
+  - fossa
 
 .before_script_common: &before_script_common
   - creds-helper init
@@ -34,12 +45,12 @@ sast-scanner:
     alert_mode: 'policy' # Alert mode turned on to fail on any high vulns
 
 oss scan:
-  stage: test
+  stage: fossa
   extends: .oss-scan
-  only:
-    refs:
-      - main
-      - develop
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
 
 test:
   script:
