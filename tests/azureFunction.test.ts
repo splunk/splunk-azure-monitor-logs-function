@@ -135,6 +135,174 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPayload).to.equal(actualPayload);
     });
 
+
+    it('should resolve source namespace from fullyQualifiedNamespace, ignoring legacy connection string', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value('Mi-Namespace.servicebus.windows.net');
+      sandbox.stub(process.env, 'EventHubConnection').value('key1=val;Endpoint=sb://Legacy-Namespace.servicebus.windows.net/;key2=v');
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+      expect(actualPayload.source).to.equal('azure:mock_region:Mi-Namespace:mock-eh-name');
+    });
+
+    it('should fall back to legacy connection string when fullyQualifiedNamespace is unset', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value(undefined);
+      sandbox.stub(process.env, 'EventHubConnection').value('key1=val;Endpoint=sb://Legacy-Namespace.servicebus.windows.net/;key2=v');
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+      expect(actualPayload.source).to.equal('azure:mock_region:Legacy-Namespace:mock-eh-name');
+    });
+
+    it('should make correct POST request with azure resource logs input', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar',
+          resourceId: '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        },
+        index: 'bastion'
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should be default index if ResourceTypeDestinationIndex is undefined', async () => {
+      sandbox.stub(process.env, 'ResourceTypeDestinationIndex').value(undefined);
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar',
+          resourceId: '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should be default index if ResourceTypeDestinationIndex is undefined and resourceId is not provided ', async () => {
+      sandbox.stub(process.env, 'ResourceTypeDestinationIndex').value(undefined);
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should be default index if ResourceTypeDestinationIndex is not provided ', async () => {
+      const removeResourceTypeDestinationIndexEnv = 'ResourceTypeDestinationIndex';
+      const { [removeResourceTypeDestinationIndexEnv]: removedKey, ...mockEnvCopy } = mockEnv;
+
+      sandbox.stub(process, 'env').value(mockEnvCopy);
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+
+    it('should switch to default index when resource id is not provided', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const expectedPath = 'services/collector/event';
+      const actualPath = postStub.firstCall.args[0];
+      expect(expectedPath).to.equal(actualPath);
+      const expectedPayload = JSON.stringify({
+        event: {
+          Foo: 'bar'
+        },
+        source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
+        sourcetype: 'mock_sourcetype',
+        fields: {
+          data_manager_input_id: 'mock-input-id',
+        }
+      });
+      const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
+      expect(expectedPayload).to.equal(actualPayload);
+    });
+
+
     it('should make correct POST request with eventhub metadata if enabled', async () => {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });

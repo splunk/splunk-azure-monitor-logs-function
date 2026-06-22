@@ -130,13 +130,22 @@ Describe "Azure ARM Template Unit Tests" {
         It "Role Assignments Created" {
             $roleAssignments = $resourceMap['Microsoft.Authorization/roleAssignments']
 
-            $roleAssignments.Count | Should -Be 1
-            $roleAssignments[0].ChangeType | Should -Be "Create"
-            $roleAssignments[0].After["name"].Value | Should -Be $SCDMInputId
+            $roleAssignments.Count | Should -Be 2
 
-            $properties = $roleAssignments[0].After["properties"]
+            # Read-only custom role assigned to the onboarding service principal
+            $spRoleAssignment = $roleAssignments | Where-Object { $_.After["name"].Value -eq $SCDMInputId }
+            $spRoleAssignment | Should -Not -BeNullOrEmpty
+            $spRoleAssignment.ChangeType | Should -Be "Create"
+
+            $properties = $spRoleAssignment.After["properties"]
             $properties["principalId"].Value | Should -Be $ServicePrincipalObjectId
             $properties["roleDefinitionId"].Value | Should -Be $resourceMap['Microsoft.Authorization/roleDefinitions'][0].After["id"].Value
+
+            # Azure Event Hubs Data Receiver role assigned to the function's managed identity
+            $dataReceiverRoleId = "a638d3c7-ab3a-418d-83e6-5f17a39d4fde"
+            $miRoleAssignment = $roleAssignments | Where-Object { $_.After["properties"]["roleDefinitionId"].Value -like "*$dataReceiverRoleId" }
+            $miRoleAssignment | Should -Not -BeNullOrEmpty
+            $miRoleAssignment.ChangeType | Should -Be "Create"
         }
 
         It "Eventhub Namespace Created" {

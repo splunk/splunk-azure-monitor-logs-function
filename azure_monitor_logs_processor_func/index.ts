@@ -221,11 +221,14 @@ function toSplunkEvent(record: any): SplunkEvent {
  * Get the source to be set on every event.
  */
 function getSource(): string {
+  const fqns = process.env.EventHubConnection__fullyQualifiedNamespace;
   const regex = new RegExp('.*Endpoint=sb://(.+)\.servicebus\.windows\.net.*');
   const match = (process.env.EventHubConnection ?? '').match(regex) ?? [];
 
   const region = process.env.Region ?? 'unknown-region'
-  const namespace = match.length > 1 ? match[1] : 'unknown-namespace';
+  const namespace = fqns
+    ? fqns.replace('.servicebus.windows.net', '')
+    : (match.length > 1 ? match[1] : 'unknown-namespace');
   const eventHub = process.env.EventHubName ?? 'unknown-eventhub'
 
   return `azure:${region}:${namespace}:${eventHub}`;
