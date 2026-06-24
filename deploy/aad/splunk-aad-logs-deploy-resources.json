@@ -380,7 +380,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "tags": "[parameters('allResourceTags')]",
               "name": "[concat(variables('backupStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
               "dependsOn": [
@@ -469,7 +469,7 @@
             {
               "type": "Microsoft.Storage/storageAccounts/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('jobsStorageAccountName'), '/Microsoft.Insights/', 'splunk-storage-account-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName'))]",
@@ -557,7 +557,7 @@
             {
               "type": "Microsoft.EventHub/namespaces/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('eventHubNamespaceName'), '/Microsoft.Insights/', 'splunk-eventhub-namespace-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]",
@@ -590,7 +590,7 @@
             {
               "type": "Microsoft.Web/serverfarms/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('hostingPlanName'), '/Microsoft.Insights/', 'splunk-hosting-plan-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
@@ -727,7 +727,7 @@
             {
               "type": "Microsoft.Web/sites/providers/diagnosticSettings",
               "tags": "[parameters('allResourceTags')]",
-              "apiVersion": "2017-05-01-preview",
+              "apiVersion": "2021-05-01-preview",
               "name": "[concat(variables('functionName'), '/Microsoft.Insights/', 'splunk-azure-function-diagnostic-settings')]",
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', variables('functionName'))]",
