@@ -20,11 +20,11 @@ cache:
 
 include:
   - project: 'ci-cd/templates'
-    ref: master
+    ref: main
     file: '/prodsec/.oss-scan.yml'
-  - project: 'prodsec/scp-scanning/gitlab-checkmarx'
-    ref: latest
-    file: '/templates/.sast_scan.yml'
+  - project: 'ci-cd/templates'
+    file: '/prodsec/.sast-scan.yml'
+    ref: main
 
 stages:
   - test
