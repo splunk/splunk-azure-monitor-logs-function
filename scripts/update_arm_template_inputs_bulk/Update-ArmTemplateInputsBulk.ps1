@@ -349,7 +349,7 @@ ResourceContainers
     | project resourceGroup, functionName = name, armVersion = tags['SplunkInputARMVersion'],
               inputType = iff(name startswith 'splkAadLogsFn', 'aad', 'activity')
 ) on resourceGroup
-| project subscriptionId, resourceGroup, scdmInputId = tags['SplunkDMInputId'],
+| project id, subscriptionId, resourceGroup, scdmInputId = tags['SplunkDMInputId'],
           functionName, inputType, armVersion, location
 "@
 
@@ -405,7 +405,7 @@ ResourceContainers
     | project resourceGroup, functionName = name, armVersion = tags['SplunkInputARMVersion'],
               inputType = iff(name startswith 'splkAadLogsFn', 'aad', 'activity')
 ) on resourceGroup
-| project subscriptionId, resourceGroup, scdmInputId = tags['SplunkDMInputId'],
+| project id, subscriptionId, resourceGroup, scdmInputId = tags['SplunkDMInputId'],
           functionName, inputType, armVersion, location
 "@
 
