@@ -28,6 +28,7 @@ include:
 
 stages:
   - test
+  - oss-scan
   - deploy-test
   - deploy-dev
   - deploy-prd
@@ -45,10 +46,11 @@ sast-scanner:
     alert_mode: 'policy' # Alert mode turned on to fail on any high vulns
 
 oss scan:
-  stage: fossa
+  stage: oss-scan
   extends: .oss-scan
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
@@ -101,6 +103,8 @@ deploy-dev:
   only:
     - develop
     - main
+  except:
+    - schedules
   script:
     - *before_script_common
     - *build-and-package
