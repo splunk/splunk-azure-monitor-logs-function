@@ -28,7 +28,7 @@ const WRITE_TIME = 30 * 1000;
 const BUFFER = 30 * 1000;
 const MAX_RETRIES = 2;
 const AZURE_LOG_LIMIT = 32000;
-
+const RESOURCE_LOG_TYPE_DELIMETER = "PROVIDERS/";
 /**
  * Entrypoint for function that handles a list of events.
  * @param context The context of the current function execution.
@@ -180,6 +180,7 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: Conte
   log.info(`Mapping ${eventHubMessages.length} EventHub message(s) to Splunk events.`);
   const splunkEvents: SplunkEvent[] = [];
   const enableEventhubMetadata = enabledEventhubMetadata();
+  const resourceTypeToIndexMap = getResourceTypeToIndexMapping();
 
   for (let i = 0;i < eventHubMessages.length; i++) {
     const eventHubMessage = eventHubMessages[i];
@@ -188,18 +189,40 @@ function toSplunkEvents(log: Logger, eventHubMessages: any[], bindingData: Conte
       if (enableEventhubMetadata) {
         record.__eventhub_metadata = bindingData.systemPropertiesArray[i];
       }
-      splunkEvents.push(toSplunkEvent(record));
+      splunkEvents.push(toSplunkEvent(record, resourceTypeToIndexMap));
     }
   }
   log.info(`Mapped ${eventHubMessages.length} EventHub message(s) to ${splunkEvents.length} Splunk event(s).`);
   return splunkEvents;
 }
 
+
+function getResourceTypeToIndexMapping(): Map<string, string> {
+  const resourceTypeIndexEnvVar = process.env.ResourceTypeDestinationIndex || '';
+  let resourceTypeToIndexWithLowerCaseKeys: Map<string, string> = new Map<string, string>();
+  
+  if (resourceTypeIndexEnvVar !== '') {
+    const tokenizedKeyValPairs = resourceTypeIndexEnvVar.split(";")
+
+    for (const token of tokenizedKeyValPairs) {
+      const keyValPair = token.split("=")
+
+      if (keyValPair.length === 2) {
+        const key = keyValPair[0].trim().toLowerCase();
+        const val = keyValPair[1].trim();
+        resourceTypeToIndexWithLowerCaseKeys.set(key, val)
+      }
+    }
+  }
+  return resourceTypeToIndexWithLowerCaseKeys;
+}
+
 /**
  * Map a single record into a Splunk event.
  * @param record the record to map.
+ * @param resourceTypeToIndexMap Map object of resource log type to index.
  */
-function toSplunkEvent(record: any): SplunkEvent {
+function toSplunkEvent(record: any, resourceTypeToIndexMap: Map<string, string>): SplunkEvent {
   let splunkEvent: SplunkEvent = {
     event: record,
     source: getSource(),
@@ -214,7 +237,46 @@ function toSplunkEvent(record: any): SplunkEvent {
     splunkEvent.time = timeStamp;
   }
 
+  const index = tryExtractIndexForResourceLogs(record, resourceTypeToIndexMap);
+  if (index) {
+    splunkEvent.index = index;
+  }
+
   return splunkEvent;
+}
+
+/**
+ * Process resource type index
+ * @param record the record to map.
+ * @param resourceTypeToIndexMap Map object of resource log type to index.
+ */
+function tryExtractIndexForResourceLogs(record: any, resourceTypeToIndexMap: Map<string, string>): string | undefined {
+  if (resourceTypeToIndexMap !== undefined) {
+    if (record.hasOwnProperty('resourceId')) {
+      let eventResourceType = extractResourceType(record.resourceId, RESOURCE_LOG_TYPE_DELIMETER);
+      
+      if (resourceTypeToIndexMap.has(eventResourceType)) {
+        return resourceTypeToIndexMap.get(eventResourceType);
+      }
+    }
+  }
+}
+
+/**
+ * Try to extract resource log type from the resource Id
+ * @param resourceId the resourceId.
+ * @param delimiter the boundary after which the resource provider namespace starts - see below
+ * /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/resourceProviderNamespace}/{resourceType}/{resourceName}
+ */
+function extractResourceType(resourceId: string, delimiter: string): string {
+  // lastIndexOf performs a literal, case-sensitive search in O(n) time, matching the semantics of the
+  // previous greedy regex ('.*' + delimiter) without its ReDoS-prone worst-case backtracking behavior.
+  const delimiterIndex = resourceId.lastIndexOf(delimiter);
+  const resourceTypeWithResourceName = delimiterIndex === -1
+    ? resourceId
+    : resourceId.substring(delimiterIndex + delimiter.length);
+  // Extract {resourceProviderNamespace}/{resourceType} from {resourceProviderNamespace}/{resourceType}/{resourceName}
+  return resourceTypeWithResourceName.substring(0, resourceTypeWithResourceName.lastIndexOf("/")).toLowerCase();
 }
 
 /**
@@ -222,16 +284,38 @@ function toSplunkEvent(record: any): SplunkEvent {
  */
 function getSource(): string {
   const fqns = process.env.EventHubConnection__fullyQualifiedNamespace;
-  const regex = new RegExp('.*Endpoint=sb://(.+)\.servicebus\.windows\.net.*');
-  const match = (process.env.EventHubConnection ?? '').match(regex) ?? [];
-
-  const region = process.env.Region ?? 'unknown-region'
   const namespace = fqns
     ? fqns.replace('.servicebus.windows.net', '')
-    : (match.length > 1 ? match[1] : 'unknown-namespace');
+    : extractNamespaceFromConnectionString(process.env.EventHubConnection ?? '');
+
+  const region = process.env.Region ?? 'unknown-region'
   const eventHub = process.env.EventHubName ?? 'unknown-eventhub'
 
   return `azure:${region}:${namespace}:${eventHub}`;
+}
+
+/**
+ * Extract the namespace from an Event Hub connection string, e.g. from
+ * "Endpoint=sb://my-namespace.servicebus.windows.net/;..." extract "my-namespace".
+ * Uses literal string operations rather than a regex to avoid catastrophic backtracking (CWE-1333)
+ * on malformed or unexpectedly long input.
+ * @param connectionString the Event Hub connection string.
+ */
+function extractNamespaceFromConnectionString(connectionString: string): string {
+  const suffix = '.servicebus.windows.net';
+  const endpointPrefix = 'Endpoint=sb://';
+  const endpointIndex = connectionString.indexOf(endpointPrefix);
+  if (endpointIndex === -1) {
+    return 'unknown-namespace';
+  }
+
+  const afterEndpoint = connectionString.substring(endpointIndex + endpointPrefix.length);
+  const suffixIndex = afterEndpoint.indexOf(suffix);
+  if (suffixIndex === -1) {
+    return 'unknown-namespace';
+  }
+
+  return afterEndpoint.substring(0, suffixIndex);
 }
 
 /**
@@ -287,9 +371,9 @@ async function pushToHec(log: Logger, hecHttpClient: AxiosInstance, payload: str
   const response = await hecHttpClient.post('services/collector/event', compressedPayload);
   let responseBody = '';
 
-  if(response.headers &&
-      response.headers['content-type'] &&
-      response.headers['content-type'].includes('application/json') &&
+  const contentType = response.headers?.['content-type'];
+  if(contentType &&
+      String(contentType).includes('application/json') &&
       response.data) {
     responseBody = JSON.stringify(response.data).slice(0, AZURE_LOG_LIMIT);
   } else {
@@ -348,6 +432,7 @@ type SplunkEvent = {
   event: object,
   source: string,
   sourcetype: string | undefined,
+  index?: string,
   fields: object,
   time?: number,
 };
