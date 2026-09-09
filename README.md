@@ -9,6 +9,8 @@ This repository also includes
 
 ## Set up the Dev Environment
 
+Ideally, you should be setting up this repository during [the onboarding process](https://splunk.atlassian.net/wiki/spaces/PROD/pages/1078171273052/Engineer+Onboarding+-+Azure+Push-based) for full context:
+
 ### Install tools
 
 1. Azure Functions Core Tools (Install latest version).
@@ -149,10 +151,3 @@ After being initialized, an additional output binding for blob storage was added
 
 In `host.json`, set `logging.logLevel.Function` to `Trace` to enable verbose logging just for this Azure Function code.
 For more logging options for other components, see [Configure log levels](https://docs.microsoft.com/en-us/azure/azure-functions/configure-monitoring?tabs=v2#configure-log-levels) in the Microsoft Azure documentation.
-
-## Appendix
-
-### Setup Azure dev account
-
-Ask to be added to `CDC TEAM` Azure directory (splunkcdcdev.onmicrosoft.com).
-You will also need to be made a global admin (for AAD diagnostics settings) and owner of subscriptions (for acivity logs, diagnostics settings on subscriptions).

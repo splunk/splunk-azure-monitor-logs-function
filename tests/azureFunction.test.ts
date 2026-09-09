@@ -135,7 +135,6 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPayload).to.equal(actualPayload);
     });
 
-
     it('should resolve source namespace from fullyQualifiedNamespace, ignoring legacy connection string', async () => {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
@@ -216,6 +215,24 @@ describe('Azure Monitor Logs Process', function () {
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
+    });
+
+    it('should process an oversized resourceId without a ReDoS stall', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      // Regression test for CWE-1333: extractResourceType previously used '.*' + delimiter as a
+      // regex, which caused catastrophic backtracking on long inputs that do not contain the
+      // delimiter. This asserts the function completes quickly regardless of resourceId length.
+      const maliciousResourceId = 'A'.repeat(500000);
+      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': maliciousResourceId }] }];
+
+      const start = Date.now();
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+      const elapsedMs = Date.now() - start;
+
+      expect(elapsedMs).to.be.lessThan(1000);
+      expect(postStub.calledOnce).is.true;
     });
 
     it('should be default index if ResourceTypeDestinationIndex is undefined and resourceId is not provided ', async () => {
