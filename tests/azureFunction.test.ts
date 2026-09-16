@@ -4,7 +4,7 @@ import { ungzip } from 'node-gzip';
 import { SinonStub } from 'sinon';
 
 import azureMonitorLogsProcessorFunc from '../azure_monitor_logs_processor_func/index';
-import { context, mockEnv, sandbox } from './common';
+import { context, mockEnv, sandbox, validRecord, validTenantRecord } from './common';
 
 const splunkContext: any = context;
 
@@ -30,7 +30,7 @@ describe('Azure Monitor Logs Process', function () {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(httpClientStub.calledOnce).to.be.true;
@@ -46,8 +46,11 @@ describe('Azure Monitor Logs Process', function () {
     it('should calculate appropriate httpClient timeout', async () => {
       const dateStub = sandbox.stub(Date, 'now');
 
+      // Default covers any Date.now() calls between startTime and timeToBuild (e.g. moment.utc()
+      // parsing the record's `time` field internally) so the timing math stays exact regardless
+      // of how many incidental calls happen in between.
+      dateStub.returns(new Date(1633453028100));
       dateStub.onCall(0).returns(new Date(1633453028000));
-      dateStub.onCall(1).returns(new Date(1633453028100));
 
       // ((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload) / RetryCount) / Number of batches
       const timeout = (((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100) / 3) / 1;
@@ -56,7 +59,7 @@ describe('Azure Monitor Logs Process', function () {
       postStub.resolves({ status: 200 });
 
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(httpClientStub.calledOnce).to.be.true;
@@ -68,8 +71,8 @@ describe('Azure Monitor Logs Process', function () {
     it('should handle not set negative httpClient timeout', async () => {
       const dateStub = sandbox.stub(Date, 'now');
 
+      dateStub.returns(new Date(1633454028100));
       dateStub.onCall(0).returns(new Date(1633453028000));
-      dateStub.onCall(1).returns(new Date(1633454028100));
 
       const timeout = 1;
 
@@ -77,7 +80,7 @@ describe('Azure Monitor Logs Process', function () {
       postStub.resolves({ status: 200 });
 
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(httpClientStub.calledOnce).to.be.true;
@@ -90,8 +93,8 @@ describe('Azure Monitor Logs Process', function () {
       const dateStub = sandbox.stub(Date, 'now');
       sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(10);
 
+      dateStub.returns(new Date(1633453028100));
       dateStub.onCall(0).returns(new Date(1633453028000));
-      dateStub.onCall(1).returns(new Date(1633453028100));
 
       // ((FUNC_TIMEOUT - INIT_TIME - WRITE_TIME - BUFFER - time to batch payload) / RetryCount) / Number of batches
       const timeout = (((10 * 60 * 1000) - (2 * 60 * 1000) - (30 * 1000) - (30 * 1000) - 100) / 3) / 2;
@@ -100,7 +103,7 @@ describe('Azure Monitor Logs Process', function () {
       postStub.resolves({ status: 200 });
 
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }, { records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }, { records: [{ ...validRecord, 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(httpClientStub.calledOnce).to.be.true;
@@ -113,7 +116,7 @@ describe('Azure Monitor Logs Process', function () {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, Foo: 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -123,6 +126,7 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPath).to.equal(actualPath);
       const expectedPayload = JSON.stringify({
         event: {
+          ...validRecord,
           Foo: 'bar'
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
@@ -130,6 +134,8 @@ describe('Azure Monitor Logs Process', function () {
         fields: {
           data_manager_input_id: 'mock-input-id',
         },
+        time: 1548108866979,
+        index: 'bastion',
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
@@ -141,7 +147,7 @@ describe('Azure Monitor Logs Process', function () {
       sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value('Mi-Namespace.servicebus.windows.net');
       sandbox.stub(process.env, 'EventHubConnection').value('key1=val;Endpoint=sb://Legacy-Namespace.servicebus.windows.net/;key2=v');
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
@@ -154,7 +160,7 @@ describe('Azure Monitor Logs Process', function () {
       sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value(undefined);
       sandbox.stub(process.env, 'EventHubConnection').value('key1=val;Endpoint=sb://Legacy-Namespace.servicebus.windows.net/;key2=v');
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
@@ -165,7 +171,7 @@ describe('Azure Monitor Logs Process', function () {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, Foo: 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -175,14 +181,15 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPath).to.equal(actualPath);
       const expectedPayload = JSON.stringify({
         event: {
-          Foo: 'bar',
-          resourceId: '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION'
+          ...validRecord,
+          Foo: 'bar'
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
         sourcetype: 'mock_sourcetype',
         fields: {
           data_manager_input_id: 'mock-input-id',
         },
+        time: 1548108866979,
         index: 'bastion'
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
@@ -194,7 +201,7 @@ describe('Azure Monitor Logs Process', function () {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, Foo: 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -204,14 +211,15 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPath).to.equal(actualPath);
       const expectedPayload = JSON.stringify({
         event: {
-          Foo: 'bar',
-          resourceId: '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION'
+          ...validRecord,
+          Foo: 'bar'
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
         sourcetype: 'mock_sourcetype',
         fields: {
           data_manager_input_id: 'mock-input-id',
-        }
+        },
+        time: 1548108866979,
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
@@ -225,7 +233,7 @@ describe('Azure Monitor Logs Process', function () {
       // regex, which caused catastrophic backtracking on long inputs that do not contain the
       // delimiter. This asserts the function completes quickly regardless of resourceId length.
       const maliciousResourceId = 'A'.repeat(500000);
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar', 'resourceId': maliciousResourceId }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, Foo: 'bar', resourceId: maliciousResourceId }] }];
 
       const start = Date.now();
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
@@ -235,12 +243,37 @@ describe('Azure Monitor Logs Process', function () {
       expect(postStub.calledOnce).is.true;
     });
 
+    /**
+     * WAD/ETW records (Microsoft-Windows-WebSites) carry PascalCase `ResourceId` instead of
+     * the common envelope's lowercase `resourceId`.
+     */
+    it('should extract index from PascalCase ResourceId field (WAD/ETW records)', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+
+      const wadRecord = {
+        ProviderName: 'Microsoft-Windows-WebSites',
+        Time: '2019-01-21T22:14:26.9792776Z',
+        Category: 'Administrative',
+        ResourceId: '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/RESOURCEGROUPS/SAMPLE-LOGS/PROVIDERS/MICROSOFT.NETWORK/BASTIONHOSTS/SAMPLE-LOGS-VNET-BASTION',
+        OperationName: 'UpdateWebSite',
+      };
+      const eventHubMessages = [{ records: [wadRecord] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+      const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+      expect(actualPayload).to.include.keys('index');
+      expect(actualPayload.index).to.equal('bastion');
+    });
+
     it('should be default index if ResourceTypeDestinationIndex is undefined and resourceId is not provided ', async () => {
       sandbox.stub(process.env, 'ResourceTypeDestinationIndex').value(undefined);
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validTenantRecord, Foo: 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -250,13 +283,15 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPath).to.equal(actualPath);
       const expectedPayload = JSON.stringify({
         event: {
+          ...validTenantRecord,
           Foo: 'bar'
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
         sourcetype: 'mock_sourcetype',
         fields: {
           data_manager_input_id: 'mock-input-id',
-        }
+        },
+        time: 1548108866979,
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
@@ -270,7 +305,7 @@ describe('Azure Monitor Logs Process', function () {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validTenantRecord, Foo: 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -280,13 +315,15 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPath).to.equal(actualPath);
       const expectedPayload = JSON.stringify({
         event: {
+          ...validTenantRecord,
           Foo: 'bar'
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
         sourcetype: 'mock_sourcetype',
         fields: {
           data_manager_input_id: 'mock-input-id',
-        }
+        },
+        time: 1548108866979,
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
@@ -297,7 +334,7 @@ describe('Azure Monitor Logs Process', function () {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validTenantRecord, Foo: 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -307,13 +344,15 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPath).to.equal(actualPath);
       const expectedPayload = JSON.stringify({
         event: {
+          ...validTenantRecord,
           Foo: 'bar'
         },
         source: 'azure:mock_region:Mock-0-Namespace1:mock-eh-name',
         sourcetype: 'mock_sourcetype',
         fields: {
           data_manager_input_id: 'mock-input-id',
-        }
+        },
+        time: 1548108866979,
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
@@ -326,11 +365,12 @@ describe('Azure Monitor Logs Process', function () {
       sandbox.stub(process.env, 'EnableEventhubMetadata').value("true");
       sandbox.stub(splunkContext.bindingData,'systemPropertiesArray').value([{ 'lemon': 'tree' }]);
 
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, Foo: 'bar' }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       const expectedPayload = JSON.stringify({
         event: {
+          ...validRecord,
           Foo: 'bar',
           __eventhub_metadata: {
             lemon: 'tree'
@@ -341,13 +381,17 @@ describe('Azure Monitor Logs Process', function () {
         fields: {
           data_manager_input_id: 'mock-input-id',
         },
+        time: 1548108866979,
+        index: 'bastion',
       });
       const actualPayload = (await ungzip(postStub.firstCall.args[1])).toString();
       expect(expectedPayload).to.equal(actualPayload);
     });
 
     it('should batch events', async () => {
-      sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(400);
+      // 1000 fits exactly 2 of these (now-larger, schema-conforming) serialized events per batch,
+      // matching the original test's "2 in batch one, 1 overflows to batch two" intent.
+      sandbox.stub(process.env, 'SPLUNK_BATCH_MAX_SIZE_BYTES').value(1000);
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
@@ -355,6 +399,7 @@ describe('Azure Monitor Logs Process', function () {
         {
           records: [
             {
+              ...validRecord,
               Foo: 'from_msg1_batch_1',
             }
           ]
@@ -362,9 +407,11 @@ describe('Azure Monitor Logs Process', function () {
         {
           records: [
             {
+              ...validRecord,
               'Foo': 'from_msg2_batch_1',
             },
             {
+              ...validRecord,
               'Foo': 'from_msg2_batch_2',
             },
           ]
