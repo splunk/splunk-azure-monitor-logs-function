@@ -4,7 +4,7 @@ import { SinonSpy, SinonStub } from 'sinon';
 import * as nock from 'nock';
 
 import azureMonitorLogsProcessorFunc from '../azure_monitor_logs_processor_func/index';
-import { context, mockEnv, sandbox } from './common';
+import { context, mockEnv, sandbox, validRecord } from './common';
 
 const splunkContext: any = context;
 
@@ -39,7 +39,7 @@ describe('Azure Monitor Logs Process', function () {
                 .post('/services/collector/event')
                 .reply(500, {});
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(3);
@@ -61,7 +61,7 @@ describe('Azure Monitor Logs Process', function () {
                     code: "ENOTFOUND"
                 });
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(3);
@@ -80,7 +80,7 @@ describe('Azure Monitor Logs Process', function () {
                 .post('/services/collector/event')
                 .reply(429);
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(3);
@@ -93,7 +93,7 @@ describe('Azure Monitor Logs Process', function () {
                 .post('/services/collector/event')
                 .reply(429);
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(3);
@@ -106,7 +106,7 @@ describe('Azure Monitor Logs Process', function () {
                 .post('/services/collector/event')
                 .reply(200);
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(1);
@@ -119,7 +119,7 @@ describe('Azure Monitor Logs Process', function () {
                 .post('/services/collector/event')
                 .reply(400);
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(1);
@@ -132,7 +132,7 @@ describe('Azure Monitor Logs Process', function () {
                 .post('/services/collector/event')
                 .reply(600);
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(1);
@@ -151,7 +151,7 @@ describe('Azure Monitor Logs Process', function () {
                 .post('/services/collector/event')
                 .reply(200);
 
-            const eventHubMessages = [{ records: [{ 'Foo': 'bar' }] }];
+            const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
             await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
             expect(requestSpy.callCount).to.equal(2);

@@ -5,7 +5,7 @@ import { SinonStub } from 'sinon';
 import { InputType } from 'zlib';
 
 import azureMonitorLogsProcessorFunc from '../azure_monitor_logs_processor_func/index';
-import { context, mockEnv, sandbox } from './common';
+import { context, mockEnv, sandbox, validRecord } from './common';
 
 const splunkContext: any = context;
 
@@ -33,7 +33,7 @@ describe('Azure Monitor Logs Process', function () {
      */
     it('should extract iso 8601 timestamp', async () => {
       const time = '2021-06-09T20:20:37.6037942Z';
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar', time }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar', time }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -49,7 +49,7 @@ describe('Azure Monitor Logs Process', function () {
      */
     it('should extract aad timestamp', async () => {
       const time = '6/9/2021 8:20:37 PM';
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar', time }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar', time }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -62,7 +62,7 @@ describe('Azure Monitor Logs Process', function () {
 
     it('should extract non utc timestamp', async () => {
       const time = '2021-06-09T20:20:37.603794-0500';
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar', time }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar', time }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -75,7 +75,7 @@ describe('Azure Monitor Logs Process', function () {
 
     it('should skip invalid timestamp', async () => {
       const time = 'invalid';
-      const eventHubMessages = [{ records: [{ 'Foo': 'bar', time }] }];
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar', time }] }];
       await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
 
       expect(postStub.calledOnce).is.true;
@@ -83,6 +83,29 @@ describe('Azure Monitor Logs Process', function () {
 
       const splunkEvent = await uncompressPayload(postStub.firstCall.args[1]);
       expect(splunkEvent).to.not.include.keys('time');
+    });
+
+    /**
+     * WAD/ETW records (Microsoft-Windows-WebSites) carry PascalCase `Time` instead of the
+     * common envelope's lowercase `time`.
+     */
+    it('should extract timestamp from PascalCase Time field (WAD/ETW records)', async () => {
+      const wadRecord = {
+        ProviderName: 'Microsoft-Windows-WebSites',
+        Time: '2021-06-09T20:20:37.6037942Z',
+        Category: 'Administrative',
+        ResourceId: '/SUBSCRIPTIONS/dda8dfb6-5bbe-447a-ad40-3f50fd4cc4f3/SITES/SPLKAADLOGSFNFF7EFA9F',
+        OperationName: 'UpdateWebSite',
+      };
+      const eventHubMessages = [{ records: [wadRecord] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      expect(postStub.calledOnce).is.true;
+      expect(postStub.firstCall.args.length).to.equal(2);
+
+      const splunkEvent = await uncompressPayload(postStub.firstCall.args[1]);
+      expect(splunkEvent).to.include.keys('time');
+      expect(splunkEvent.time).to.equal(1623270037603);
     });
   });
 });
