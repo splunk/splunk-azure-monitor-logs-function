@@ -27,8 +27,8 @@ Important: this repo has **no frontend, no Python code, no workspaces, and only 
 - `deploy/` — one subfolder per log type, each self-contained:
   - `deploy/aad/` — AAD (Azure Active Directory) logs ARM template + Pester tests
   - `deploy/activity/` — Activity logs ARM template, `Update-SubscriptionDiagnosticSettings.ps1`, + Pester tests
-  - `deploy/resource/` — **dead code, currently unused.** Resource logs ARM template, `Deploy-ResourceLogsIngestionStack.ps1`, `Setup-ResourceDiagnosticsSettings.ps1`, + Pester tests. Not wired into any active SCDM input flow at this time — do not build new features on top of it and do not assume it reflects current deployment practice. Confirm with the user before investing effort here; it may be resurrected or removed later.
-- `Test-ARMTemplates.ps1` — shared Pester/ARM-TTK test runner used by all three `deploy/*` stacks and by CI's `arm-validate` job.
+  - `deploy/resource/` no longer exists — it was dead code (Resource logs ARM template using an Event Hub SAS key instead of managed identity, not wired into any active SCDM input flow) and was removed. Do not recreate it without confirming with the user first.
+- `Test-ARMTemplates.ps1` — shared Pester/ARM-TTK test runner used by both `deploy/*` stacks and by CI's `arm-validate` job.
 - `.service-manifests/` — Backstage component manifest (ownership, links, tags). Update when ownership, Slack channel, or Jira project changes.
 - `.gitlab/CODEOWNERS` — okta-group ownership gate for compliance.
 - `.claude/skills/azure-monitor-logs-fossa-fix/` — dedicated skill for FOSSA dependency-finding triage; see below.
@@ -37,14 +37,33 @@ Important: this repo has **no frontend, no Python code, no workspaces, and only 
 
 ## Function Runtime Conventions
 
-- The function entrypoint (`azureMonitorLogsProcessorFunc` in `index.ts`) must remain resilient: never let an unhandled error escape without either backing events up to blob storage (`handleGlobalError`) or logging and continuing (`handlePushErrors`). Events must never be silently dropped.
+- The function entrypoint (`azureMonitorLogsProcessorFunc` in `index.ts`) must remain resilient: never let an unhandled error escape without backing events up to blob storage, via one of `handleGlobalError` (pre-send failure, e.g. bad config), `handlePushErrors` (HEC send failure), or `handleInvalidMessages` (malformed message/record quarantine). Events must never be silently dropped.
+- EventHub input is untrusted, but the response to that is now visibility, not rejection, for anything that's at least a plain object: `toSplunkEvents` (`index.ts`) validates each message has an array `.records` — a message that isn't (or is missing entirely) is hard-quarantined to `invalidMessages`, since there's nothing to build an event from. Each record is checked against `MINIMAL_EVENT_FLOOR_SCHEMA` — a single ajv schema requiring presence of at least one non-empty-string field from `EVENT_IDENTIFYING_FIELDS` (`operationName`/`OperationName`/`Operation`, `category`/`Category`/`type`/`Type`, `Action`, `Status`, `EventType`, `AlertType`, `DisplayName`, `Activity`) — but a record that's a genuine object and simply fails that check is **not** quarantined: it's forwarded to Splunk with its own content untouched, so it isn't lost inside a per-customer blob container nobody centrally monitors. The only trace of it being unrecognized is a `log.info` line (deliberately containing no ajv error detail or record content — just the message/record index, since `record` is untrusted and may hold sensitive values). Only a record that isn't a plain object at all (`null`/`undefined`/array/primitive — can't be safely enriched or usefully forwarded) is still hard-quarantined. This is a deliberate, documented accepted-risk tradeoff — a record with no recognized event-identifying field now reaches Splunk rather than being blocked, chosen over the precision of an earlier 9-branch per-category `anyOf` model that didn't meaningfully raise the bar against a determined sender anyway (Event Hub Send permission is the actual security boundary, not this schema). `minLength: 1` on each `EVENT_IDENTIFYING_FIELDS` entry closes the null/empty-string presence-only bypass that would otherwise cause `{ operationName: null }` to be treated as "recognized" (`required` alone only checks key presence). "Forwarded unmodified" means no property is added based on *validation outcome* — no tag/flag distinguishing recognized from unrecognized events in the data itself. `__eventhub_metadata` (gated only on `EnableEventhubMetadata`, opt-in) is an intentional exception: it's Event Hub's own system metadata (partition/offset/sequence), not content derived from the record, and it's applied uniformly regardless of recognition status — deliberately so, since it's the pointer that lets someone locate the raw record in Event Hub to investigate exactly the unrecognized cases that need it most (a P2 review finding proposed gating this to recognized-only; that was declined for this reason — see the comment at the `enableEventhubMetadata` block in `index.ts`). Preserve this distinction for any new per-record logic — content-based tags on the event are off-limits, opt-in system metadata is not — and put new validation **before** any code that assumes record shape (the `enableEventhubMetadata` block once wrote `record.__eventhub_metadata = ...` before the shape check and reintroduced whole-batch failures — keep the guard first). If a genuinely new event concept doesn't fit any existing field in `EVENT_IDENTIFYING_FIELDS`, add its field name to that array so it stops showing up in the unrecognized-record log line, rather than building a new precise branch.
+- `tryExtractTimestamp`/`tryExtractIndexForResourceLogs` check both the common envelope's lowerCamelCase `time`/`resourceId` and the WAD/ETW schema's PascalCase `Time`/`ResourceId` (via `extractTimeField`/`extractResourceIdField`). If a new schema branch introduces yet another casing/name for either concept, extend those helpers rather than adding a third parallel check inline. Both helpers use `Object.prototype.hasOwnProperty.call(record, ...)`, never `record.hasOwnProperty(...)` — `record` is untrusted Event Hub input, and a record containing a `hasOwnProperty` key of its own (e.g. `null`) shadows the inherited method and throws, which — with no per-record try/catch around this call chain — crashes the *entire* invocation via `handleGlobalError`, not just the one malformed record (review finding, reproduced and fixed). Apply the same pattern to any new code that calls `.hasOwnProperty(...)` directly on Event Hub record data.
+
 - Timeout math in `index.ts` (`FUNC_TIMEOUT`, `INIT_TIME`, `WRITE_TIME`, `BUFFER`, `MAX_RETRIES`) is a comment-documented mirror of `host.json`'s `functionTimeout`. If you change one, update the other and the matching test in `tests/azureFunction.test.ts` ("should calculate appropriate httpClient timeout").
 - All configuration is read from `process.env` at call time (e.g. `getHecParams`, `enabledEventhubMetadata`, `getResourceTypeToIndexMapping`). Follow this pattern for new configuration — do not introduce a config file or module-level caching of env vars, since tests stub `process.env` directly per-test via `sandbox.stub(process, 'env').value(mockEnv)`.
-- Never log secrets. `HecToken` must never appear in a log line; only `hecUrl` and non-secret params are logged in `createHecHttpClient`.
+- Never log secrets. `HecToken` must never appear in a log line; only `hecUrl` and non-secret params are logged in `createHecHttpClient`. Never log the full `process.env` object or any other bulk dump of configuration — a `JSON.stringify(process.env)` startup log was removed for this exact reason; if you need to log config for debugging, allow-list specific non-secret keys.
 - Keep the retry policy centralized in `isRetryableError` / `getRetryDelay` — don't scatter ad hoc retry logic elsewhere.
 - Batching (`batchSerializedEvents`) enforces `SPLUNK_BATCH_MAX_SIZE_BYTES` (default `DEFAULT_SPLUNK_BATCH_MAX_SIZE_BYTES` = 1,000,000 bytes). Preserve the "single oversized event still gets its own batch" behavior — do not add a hard cap that would drop events.
 - `AZURE_LOG_LIMIT` (32000 chars) truncates error/response bodies before logging. Apply the same limit to any new log line that could include event/response payload content, to avoid Azure Monitor log truncation issues.
 - Resource-log index routing (`ResourceTypeDestinationIndex` env var, parsed by `getResourceTypeToIndexMapping`) is a `;`-delimited, `=`-separated, case-insensitive-on-key map. Follow the same parsing conventions (`trim()`, `toLowerCase()` on keys) if extending it.
+
+### Event-identifying field reference
+
+There is no per-category confidence table to maintain — the schema doesn't enumerate categories, so a category's shape being "confirmed" or "speculative" no longer changes what code accepts. `EVENT_IDENTIFYING_FIELDS` in `index.ts` is the one thing to keep current: every category shape encountered so far (Azure Monitor common envelope, WAD/ETW, Global Secure Access, M365 audit) already maps to one of its field names, so update this table only when a genuinely new field-naming convention shows up:
+
+| Field name | Where it's the discriminator |
+| --- | --- |
+| `operationName`, `OperationName`, `Operation` | Common Azure Monitor envelope (lowercase); WAD/ETW (PascalCase); M365 audit logs |
+| `category`, `Category`, `type`, `Type` | Common Azure Monitor envelope (`category` for most, `type` for Application Insights); WAD/ETW (`Category`) |
+| `Action` | Global Secure Access traffic logs |
+| `Status` | Global Secure Access remote-network health logs |
+| `EventType` | Global Secure Access connection events / AI insights |
+| `AlertType`, `DisplayName` | Global Secure Access / cross-product security alerts |
+| `Activity` | Global Secure Access AI insights |
+
+If a new category's record doesn't contain any of these, it still reaches Splunk unmodified, but a `log.info` line in the Function's own logs notes it as unrecognized (message/record index only, no content) — that's a signal to add its identifying field name to `EVENT_IDENTIFYING_FIELDS`, not to build a new precise schema branch.
 
 ## TypeScript Conventions
 
@@ -64,8 +83,7 @@ Important: this repo has **no frontend, no Python code, no workspaces, and only 
 
 ## ARM Templates & Deployment Scripts
 
-- One log type = one self-contained folder under `deploy/`: `aad/`, `activity/`, `resource/`. Each has its own ARM template (`splunk-<type>-logs-deploy-resources.json`) and its own `tests/Test-Deployment.Tests.ps1`. Do not cross-wire templates between folders.
-- **`deploy/resource/` is dead code — not currently used in production.** `Deploy-ResourceLogsIngestionStack.ps1` and `Setup-ResourceDiagnosticsSettings.ps1` are not wired into any active SCDM input flow right now. Do not treat their parameter contracts as a live interface, and do not assume changes there have any customer impact today. Ask the user before spending effort on this stack — verify it's still meant to be dead before making non-trivial changes.
+- One log type = one self-contained folder under `deploy/`: `aad/`, `activity/`. Each has its own ARM template (`splunk-<type>-logs-deploy-resources.json`) and its own `tests/Test-Deployment.Tests.ps1`. Do not cross-wire templates between folders.
 - `Update-SubscriptionDiagnosticSettings.ps1` (activity logs) is the operational entrypoint used outside CI (e.g. by SCDM's backend) to provision/tear down customer-side Azure resources per SCDM input. Treat its parameter contract (names, types, mandatory-ness) as a stable interface — a breaking change here breaks the SCDM edit/create/delete workflow for that input.
 - All PowerShell scripts carry a `<#PSScriptInfo#>` block (version, GUID, author, license, project URI) and a `.SYNOPSIS`/`.PARAMETER`/`.EXAMPLE` comment-based help block. Preserve this structure and keep `.EXAMPLE` accurate when changing parameters.
 - Resource groups and diagnostic settings are named deterministically from the SCDM input ID (e.g. `SplunkDMDataIngest-$SCDMInputId-$region`, `splunk-activity-logs-$SCDMInputId`). Never change this naming convention without accounting for existing customer deployments — it is how the scripts find and update/delete prior resources idempotently.
@@ -76,7 +94,7 @@ Important: this repo has **no frontend, no Python code, no workspaces, and only 
 
 - This repo has a **dedicated skill** for this: `.claude/skills/azure-monitor-logs-fossa-fix/SKILL.md`. Invoke it whenever triaging FOSSA findings instead of hand-rolling the analysis — it already encodes the full dependency-chain-tracing, fixability decision tree, and manifest-only fix workflow specific to this repo.
 - Key facts (duplicated from the skill for quick reference): single-package repo, `npm` not `yarn`, fixes go in `package.json` `dependencies`/`devDependencies`/`overrides` only — never touch `node_modules` or source code to resolve a finding.
-- Production deps: `axios`, `axios-retry`, `moment`, `node-gzip`. Everything else is dev/test-only.
+- Production deps: `axios`, `axios-retry`, `ajv`, `moment`, `node-gzip`. Everything else is dev/test-only.
 - CI runs FOSSA/OSS scanning on MR and on a schedule (see `oss scan` job and `fossa` stage in `.gitlab-ci.yml`).
 
 ## CI/CD (`.gitlab-ci.yml`)
@@ -118,14 +136,14 @@ See [`README.md`](README.md) for full setup and detail.
 
 ### Function logic (`azure_monitor_logs_processor_func/index.ts`)
 
-- Read the whole file first — it's ~430 lines and every helper function is small and single-purpose. Understand `buildHecPayloads` → `toSplunkEvents` → `toSplunkEvent` → `pushToHec` as the main data path before changing any one link.
+- Read the whole file first — it's ~570 lines and every helper function is small and single-purpose. Understand `buildHecPayloads` → `toSplunkEvents` → `toSplunkEvent` → `pushToHec` as the main data path, and `handleGlobalError` / `handlePushErrors` / `handleInvalidMessages` as the three failure-backup paths, before changing any one link.
 - Add/extend unit tests in the matching `tests/azureFunction*.test.ts` file rather than creating a new test file, unless the change introduces a genuinely new concern (as batching, failure-handling, retry, and timestamp logic each already got their own file).
 - Any new environment variable must be documented in `README.md`'s "Required arguments" section and reflected in `tests/common.ts`'s `mockEnv`.
 
 ### ARM templates / deployment scripts (`deploy/`)
 
-- Identify which of the three stacks (`aad`, `activity`, `resource`) the change belongs to before editing — they are independent and should not be merged or cross-referenced.
-- `resource` is dead code (see Repo Map above) — flag this to the user if a task seems to target it, rather than silently implementing changes there.
+- Identify which of the two stacks (`aad`, `activity`) the change belongs to before editing — they are independent and should not be merged or cross-referenced.
+- `deploy/resource/` was removed (dead code, see Repo Map above) — flag this to the user if a task seems to target it, rather than recreating it.
 - Run `Test-ARMTemplates.ps1` locally against the affected stack before pushing; CI's `arm-validate` job will otherwise be the first signal.
 - If a script's parameters change, update its `.PARAMETER`/`.EXAMPLE` comment-based help in the same change.
 
