@@ -338,7 +338,12 @@ function extractResourceIdField(record: any): string | undefined {
  * /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/resourceProviderNamespace}/{resourceType}/{resourceName}
  */
 function extractResourceType(resourceId: string, delimiter: string): string {
-  const resourceTypeWithResourceName = resourceId.replace(new RegExp('.*' + delimiter), '');
+  // lastIndexOf performs a literal, case-sensitive search in O(n) time, matching the semantics of the
+  // previous greedy regex ('.*' + delimiter) without its ReDoS-prone worst-case backtracking behavior.
+  const delimiterIndex = resourceId.lastIndexOf(delimiter);
+  const resourceTypeWithResourceName = delimiterIndex === -1
+    ? resourceId
+    : resourceId.substring(delimiterIndex + delimiter.length);
   // Extract {resourceProviderNamespace}/{resourceType} from {resourceProviderNamespace}/{resourceType}/{resourceName}
   return resourceTypeWithResourceName.substring(0, resourceTypeWithResourceName.lastIndexOf("/")).toLowerCase();
 }
@@ -348,16 +353,41 @@ function extractResourceType(resourceId: string, delimiter: string): string {
  */
 function getSource(): string {
   const fqns = process.env.EventHubConnection__fullyQualifiedNamespace;
-  const regex = new RegExp('.*Endpoint=sb://(.+)\.servicebus\.windows\.net.*');
-  const match = (process.env.EventHubConnection ?? '').match(regex) ?? [];
-
-  const region = process.env.Region ?? 'unknown-region'
   const namespace = fqns
     ? fqns.replace('.servicebus.windows.net', '')
-    : (match.length > 1 ? match[1] : 'unknown-namespace');
+    : extractNamespaceFromConnectionString(process.env.EventHubConnection ?? '');
+
+  const region = process.env.Region ?? 'unknown-region'
   const eventHub = process.env.EventHubName ?? 'unknown-eventhub'
 
   return `azure:${region}:${namespace}:${eventHub}`;
+}
+
+/**
+ * Extract the namespace from an Event Hub connection string, e.g. from
+ * "Endpoint=sb://my-namespace.servicebus.windows.net/;..." extract "my-namespace".
+ * Uses literal string operations rather than a regex to avoid catastrophic backtracking (CWE-1333)
+ * on malformed or unexpectedly long input.
+ * @param connectionString the Event Hub connection string.
+ */
+function extractNamespaceFromConnectionString(connectionString: string): string {
+  const suffix = '.servicebus.windows.net';
+  const endpointPrefix = 'Endpoint=sb://';
+  const endpointIndex = connectionString.indexOf(endpointPrefix);
+  if (endpointIndex === -1) {
+    return 'unknown-namespace';
+  }
+
+  const afterEndpoint = connectionString.substring(endpointIndex + endpointPrefix.length);
+  const suffixIndex = afterEndpoint.indexOf(suffix);
+  // suffixIndex === 0 means the suffix immediately follows the prefix with an empty namespace in
+  // between (e.g. "Endpoint=sb://.servicebus.windows.net") — reject that too, matching the original
+  // regex's `(.+)` (one-or-more) capture group, which never matched on an empty namespace either.
+  if (suffixIndex <= 0) {
+    return 'unknown-namespace';
+  }
+
+  return afterEndpoint.substring(0, suffixIndex);
 }
 
 /**

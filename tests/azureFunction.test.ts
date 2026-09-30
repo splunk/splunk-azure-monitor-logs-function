@@ -168,6 +168,61 @@ describe('Azure Monitor Logs Process', function () {
       expect(actualPayload.source).to.equal('azure:mock_region:Legacy-Namespace:mock-eh-name');
     });
 
+    it('should fall back to unknown-namespace when the connection string is missing the Endpoint=sb:// prefix', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value(undefined);
+      sandbox.stub(process.env, 'EventHubConnection').value('key1=val;key2=v');
+
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+      expect(actualPayload.source).to.equal('azure:mock_region:unknown-namespace:mock-eh-name');
+    });
+
+    it('should fall back to unknown-namespace when the connection string is missing the .servicebus.windows.net suffix', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value(undefined);
+      sandbox.stub(process.env, 'EventHubConnection').value('key1=val;Endpoint=sb://Legacy-Namespace.example.com/;key2=v');
+
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+      expect(actualPayload.source).to.equal('azure:mock_region:unknown-namespace:mock-eh-name');
+    });
+
+    it('should fall back to unknown-namespace when the connection string has an empty namespace between the prefix and suffix', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value(undefined);
+      sandbox.stub(process.env, 'EventHubConnection').value('key1=val;Endpoint=sb://.servicebus.windows.net/;key2=v');
+
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+
+      const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+      expect(actualPayload.source).to.equal('azure:mock_region:unknown-namespace:mock-eh-name');
+    });
+
+    it('should process an oversized malformed connection string without a ReDoS stall', async () => {
+      httpClientStub.returns(clientInstance);
+      postStub.resolves({ status: 200 });
+      sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value(undefined);
+      sandbox.stub(process.env, 'EventHubConnection').value('Endpoint=sb://' + 'A'.repeat(500000));
+
+      const start = Date.now();
+      const eventHubMessages = [{ records: [{ ...validRecord, 'Foo': 'bar' }] }];
+      await azureMonitorLogsProcessorFunc(splunkContext, eventHubMessages);
+      const elapsedMs = Date.now() - start;
+
+      expect(elapsedMs).to.be.lessThan(1000);
+      const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+      expect(actualPayload.source).to.equal('azure:mock_region:unknown-namespace:mock-eh-name');
+    });
+
     it('should make correct POST request with azure resource logs input', async () => {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
@@ -226,9 +281,7 @@ describe('Azure Monitor Logs Process', function () {
       expect(expectedPayload).to.equal(actualPayload);
     });
 
-    // Skipped: the extractResourceType fix this regression test depends on (DAT-3667) isn't on
-    // this 4.7 branch yet. Un-skip once that fix is backported.
-    it.skip('should process an oversized resourceId without a ReDoS stall', async () => {
+    it('should process an oversized resourceId without a ReDoS stall', async () => {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
 
