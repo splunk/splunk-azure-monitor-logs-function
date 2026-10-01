@@ -34,7 +34,8 @@ export const mockEnv = {
   EventHubName: 'mock-eh-name',
   DataManagerInputId: 'mock-input-id',
   SPLUNK_BATCH_MAX_SIZE_BYTES: 1 * 1000 * 1000,
-  EnableEventhubMetadata: "false"
+  EnableEventhubMetadata: "false",
+  ResourceTypeDestinationIndex: "microsoft.network/bastionhosts=bastion"
 };
 
 /**
