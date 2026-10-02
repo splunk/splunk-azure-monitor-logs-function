@@ -1,6 +1,6 @@
 {
   "name": "azure-monitor-logs-azure-function",
-  "version": "4.8.0",
+  "version": "4.8.1",
   "scripts": {
     "build": "tsc",
     "build:production": "npm run prestart && npm prune --production",
@@ -21,19 +21,19 @@
     "@types/node-gzip": "^1.1.0",
     "@types/sinon": "^10.0.2",
     "chai": "4.3.4",
-    "mocha": "^9.1.0",
+    "mocha": "^12.0.3",
     "nock": "^13.2.1",
-    "npm-run-all": "^4.1.5",
-    "rewire": "5.0.0",
+    "npm-run-all2": "^8.0.4",
+    "rewire": "^9.0.1",
     "sinon": "11.1.2",
     "ts-node": "^10.2.1",
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "ajv": "^8.20.0",
-    "axios": "^1.19.0",
+    "axios": "^1.20.0",
     "axios-retry": "^4.5.0",
-    "moment": "^2.29.4",
+    "moment": "^2.31.0",
     "node-gzip": "^1.1.2"
   },
   "overrides": {
