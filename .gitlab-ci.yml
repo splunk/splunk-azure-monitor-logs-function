@@ -54,6 +54,17 @@ oss scan:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
+npm audit:
+  stage: fossa
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  cache: []
+  script:
+    - npm audit --package-lock-only --registry=https://registry.npmjs.org/
+
 test:
   script:
     - *before_script_common
