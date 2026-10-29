@@ -54,6 +54,17 @@ oss scan:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
+npm audit:
+  stage: fossa
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  cache: []
+  script:
+    - npm audit --package-lock-only --registry=https://registry.npmjs.org/
+
 test:
   script:
     - *before_script_common
@@ -67,7 +78,8 @@ test:
 arm-validate:
   stage: test
   image:
-    name: 'mcr.microsoft.com/powershell:latest'
+    # Pin the PowerShell runtime to the image digest observed in the job log.
+    name: 'mcr.microsoft.com/powershell@sha256:810c4f1e0c9d23022c3ec18c50a6205ee4b60766f1739d329b2948df1fd7d5b0'
   script:
     - pwsh -Command "Import-Module ./Test-ARMTemplates.ps1; Test-ARMTemplates -TemplateFolder ./deploy -UnitTests -CI -AzureId '$AZURE_ID' -AzureTenant '$AZURE_TENANT' -AzureToken '$AZURE_TOKEN'"
 

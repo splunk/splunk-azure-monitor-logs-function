@@ -96,6 +96,7 @@ If a new category's record doesn't contain any of these, it still reaches Splunk
 - Key facts (duplicated from the skill for quick reference): single-package repo, `npm` not `yarn`, fixes go in `package.json` `dependencies`/`devDependencies`/`overrides` only — never touch `node_modules` or source code to resolve a finding.
 - Production deps: `axios`, `axios-retry`, `ajv`, `moment`, `node-gzip`. Everything else is dev/test-only.
 - CI runs FOSSA/OSS scanning on MR and on a schedule (see `oss scan` job and `fossa` stage in `.gitlab-ci.yml`).
+- An `npm audit` job also runs in the `fossa` stage (`npm audit --package-lock-only` against the public npm registry, no install needed), on the same triggers as `oss scan`: MR pipelines, schedules, and pushes to `main`/`develop`. It fails the pipeline on any advisory — including dev-only ones — so a new advisory turns an MR pipeline red.
 
 ## CI/CD (`.gitlab-ci.yml`)
 
