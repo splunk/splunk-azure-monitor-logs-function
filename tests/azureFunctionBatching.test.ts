@@ -1,9 +1,7 @@
 import { expect } from 'chai';
-import { context, createEvents, mockEnv, sandbox } from './common';
+import { context, createEvents, loadPrivateFunction, mockEnv, sandbox } from './common';
 
-const rewire = require('rewire');
-const functionModule = rewire('../azure_monitor_logs_processor_func/index.ts')
-const batchSerializedEvents = functionModule.__get__('batchSerializedEvents');
+const batchSerializedEvents = loadPrivateFunction('../azure_monitor_logs_processor_func/index.ts', 'batchSerializedEvents');
 
 describe('Azure Monitor Logs Process', function () {
   describe('Batch Events', function () {

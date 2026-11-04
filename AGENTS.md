@@ -79,7 +79,8 @@ If a new category's record doesn't contain any of these, it still reaches Splunk
 - Stub `axios.create()` and the returned client's `post` method rather than hitting real HTTP — see the pattern at the top of `azureFunction.test.ts`.
 - When changing timeout, batching, or retry math, update the corresponding hand-computed expected value in the test (tests intentionally re-derive the formula rather than importing the constants, so a formula change requires a matching test edit).
 - ARM templates use a **separate** test framework: PowerShell Pester, driven by `Test-ARMTemplates.ps1` and per-stack `deploy/<stack>/tests/Test-Deployment.Tests.ps1`. These require an authenticated Azure context (`Connect-AzAccount`) and are not run by `npm test`.
-
+- Tests reach non-exported functions of `index.ts` through `loadPrivateFunction` in `tests/common.ts`. Do not reintroduce `rewire`: it pulls in `eslint` and, with it, `minimatch@3`, which `npm audit` flags with no fix available. Do not export private functions from `index.ts` either — `function.json` has no `entryPoint`, so a second function export can make the Functions host's entry-point choice ambiguous.
+- `package.json` `overrides.mocha` (`glob ^14.0.2`, `minimatch ^11.0.1`) deliberately goes past the majors mocha 12 declares (`glob ^13`, `minimatch ^10`) to clear the `npm audit` glob/minimatch advisories; it is scoped to mocha's subtree only. Drop it once mocha ships with fixed versions. mocha imports minimatch by name (`const { minimatch } = require(...)`), which is why this is safe.
 - Every function change needs a matching unit test. Every ARM template change needs a matching or updated Pester test in the same `deploy/<stack>/tests/` folder.
 
 ## ARM Templates & Deployment Scripts

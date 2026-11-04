@@ -138,7 +138,7 @@ Production dependencies are those listed under `"dependencies"` in `package.json
 - `axios`, `axios-retry`, `moment`, `node-gzip`
 
 Dev/test-only dependencies are listed under `"devDependencies"`:
-- `mocha`, `chai`, `sinon`, `nock`, `rewire`, `ts-node`, `typescript`, `@types/*`, `npm-run-all`
+- `mocha`, `chai`, `sinon`, `nock`, `ts-node`, `typescript`, `@types/*`, `npm-run-all`
 
 Classification rules:
 1. Is the flagged package (or its consumer) in `dependencies`? → **production exposure**
@@ -291,6 +291,6 @@ Produce in order:
 - **npm** (not yarn) — uses `package-lock.json`; overrides are declared in `"overrides"` (not `"resolutions"`)
 - **Single-package repo** — no workspaces; `package.json` is the only manifest
 - **Production deps**: `axios`, `axios-retry`, `moment`, `node-gzip`
-- **Dev/test deps**: `mocha`, `chai`, `sinon`, `nock`, `rewire`, `ts-node`, `typescript`, `@types/*`, `npm-run-all`, `@azure/functions`
+- **Dev/test deps**: `mocha`, `chai`, `sinon`, `nock`, `ts-node`, `typescript`, `@types/*`, `npm-run-all`, `@azure/functions`
 - This is an Azure Function written in TypeScript — the compiled output goes to `dist/`
 - The `"overrides"` field is already present in `package.json` (currently pinning `@babel/runtime`) — add new overrides alongside existing ones, do not replace the field

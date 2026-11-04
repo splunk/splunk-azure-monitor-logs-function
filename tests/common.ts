@@ -1,3 +1,8 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as ts from 'typescript';
+
+const Module = require('module');
 const sinon = require('sinon');
 
 export const sandbox = sinon.createSandbox();
@@ -72,3 +77,19 @@ const createEvent = (size: number): string => {
 export const createEvents = (count: number, size: number): String[] => {
   return new Array<String>(count).fill(createEvent(size));
 };
+
+/**
+ * Loads a module's source and returns one of its non-exported top-level functions.
+ */
+export function loadPrivateFunction(modulePath: string, functionName: string): any {
+  const filename = require.resolve(modulePath);
+  const source = fs.readFileSync(filename, 'utf8') + `\nexports.__private = { ${functionName} };`;
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2015 }
+  });
+  const loaded = new Module(filename, module);
+  loaded.filename = filename;
+  loaded.paths = Module._nodeModulePaths(path.dirname(filename));
+  loaded._compile(outputText, filename);
+  return loaded.exports.__private[functionName];
+}
