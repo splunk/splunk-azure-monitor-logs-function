@@ -59,6 +59,7 @@
   },
   "variables": {
     "resourceGroupName": "[if(equals(parameters('existingResourceGroupName'), ''), concat('SplunkDMDataIngest-', parameters('scdmInputId')), parameters('existingResourceGroupName'))]",
+    "resourceGroupId": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
     "resourceDeployment": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]",
     "scdmInputTag": { "SplunkDMInputId": "[parameters('scdmInputId')]" },
     "allResourceTags": "[union(variables('scdmInputTag'), parameters('resourceTags'))]",
@@ -131,9 +132,6 @@
           },
           "serverfarmsSKU": {
             "value": "[parameters('serverfarmsSKU')]"
-          },
-          "existingResourceGroupTags": {
-            "value": "[variables('existingResourceGroupTags')]"
           }
         },
         "template": {
@@ -181,9 +179,6 @@
             },
             "serverfarmsSKU": {
               "type": "string"
-            },
-            "existingResourceGroupTags": {
-              "type": "object"
             }
           },
           "variables": {
@@ -200,15 +195,6 @@
             "jobsStorageAccountName": "[if(equals(parameters('altJobsStorageName'), ''), concat('splkjobstr', uniqueString(parameters('scdmInputId'))), parameters('altJobsStorageName'))]"
           },
           "resources": [
-            {
-              "type": "Microsoft.Resources/tags",
-              "apiVersion": "2021-04-01",
-              "name": "default",
-              "condition": "[not(empty(parameters('existingResourceGroupTags')))]",
-              "properties": {
-                "tags": "[union(if(contains(resourceGroup(), 'tags'), resourceGroup().tags, createObject()), parameters('existingResourceGroupTags'))]"
-              }
-            },
             {
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleDefinitions",
@@ -762,6 +748,19 @@
             }
           ]
         }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/tags",
+      "apiVersion": "2021-04-01",
+      "name": "default",
+      "scope": "[variables('resourceGroupId')]",
+      "condition": "[not(empty(variables('existingResourceGroupTags')))]",
+      "dependsOn": [
+        "[variables('resourceDeployment')]"
+      ],
+      "properties": {
+        "tags": "[if(empty(variables('existingResourceGroupTags')), createObject(), union(if(contains(reference(variables('resourceGroupId'), '2021-04-01', 'Full'), 'tags'), reference(variables('resourceGroupId'), '2021-04-01', 'Full').tags, createObject()), variables('existingResourceGroupTags')))]"
       }
     }
   ]

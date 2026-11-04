@@ -315,6 +315,15 @@ Describe "Azure ARM Template Existing Resource Group Tag Tests" {
         }
     }
 
+    Context "Template structure" {
+        It "Declares the group tags resource in the outer template, not the nested deployment" {
+            $template = Get-Content -Raw -Path $TemplateFile | ConvertFrom-Json
+            @($template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/tags' }).Count | Should -Be 1
+            $nested = $template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/deployments' }
+            @($nested.properties.template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/tags' }).Count | Should -Be 0
+        }
+    }
+
     Context "Existing resource group without version tag supplied" {
         It "Does not touch the group tags at all" {
             $withoutVersion.Status | Should -Be 'Succeeded'
