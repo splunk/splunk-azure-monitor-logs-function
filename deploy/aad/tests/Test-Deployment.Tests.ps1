@@ -248,3 +248,78 @@ Describe "Azure ARM Template Unit Tests" {
         }
     }
 }
+
+Describe "Azure ARM Template Existing Resource Group Tag Tests" {
+    BeforeAll {
+        $existingRgName = "SplunkDMTest-ExistingRG-" + $SCDMInputId
+        $staleVersion = "0.0.1"
+        $newVersion = "9.9.9"
+
+        New-AzResourceGroup -Name $existingRgName -Location $Location -Tag @{ customerTag = "keep"; SplunkInputARMVersion = $staleVersion } -Force | Out-Null
+
+        function Get-ExistingGroupWhatIf($resourceTags) {
+            Get-AzDeploymentWhatIfResult `
+                -Name "UnitTestDeploymentExistingRG" `
+                -Location $Location `
+                -TemplateFile $TemplateFile `
+                -TemplateParameterObject @{hecUrl = "http://localhost/"; hecToken = "i-am-a-token"; region = $Location; scdmInputId = $SCDMInputId; servicePrincipalObjectId = $ServicePrincipalObjectId; functionPackageURL = $FunctionPackageURL; existingResourceGroupName = $existingRgName; resourceTags = $resourceTags}
+        }
+
+        function Get-ChangesOfType($result, $type) {
+            @($result.Changes | Where-Object { $_.After -and $_.After["type"].Value -eq $type })
+        }
+
+        function Get-GroupWriteChanges($result) {
+            @((Get-ChangesOfType $result 'Microsoft.Resources/resourceGroups') | Where-Object { $_.ChangeType -in @("Create", "Modify", "Delete", "Deploy") })
+        }
+
+        $withVersion = Get-ExistingGroupWhatIf @{ SplunkInputARMVersion = $newVersion; tagKey = "tagValue" }
+        $withoutVersion = Get-ExistingGroupWhatIf @{}
+    }
+
+    AfterAll {
+        Remove-AzResourceGroup -Name $existingRgName -Force | Out-Null
+    }
+
+    Context "Existing resource group with version tag supplied" {
+        It "Does not declare the resource group itself" {
+            $withVersion.Status | Should -Be 'Succeeded'
+            (Get-GroupWriteChanges $withVersion).Count | Should -Be 0
+        }
+
+        It "Applies only the version tag to the resource group" {
+            $tagChanges = Get-ChangesOfType $withVersion 'Microsoft.Resources/tags'
+            $tagChanges.Count | Should -Be 1
+            $tagChanges[0].ChangeType | Should -BeIn @("Create", "Modify")
+
+            $tags = $tagChanges[0].After["properties"]["tags"]
+            $tags["SplunkInputARMVersion"].Value | Should -Be $newVersion
+        }
+
+        It "Preserves unrelated existing group tags" {
+            $tags = (Get-ChangesOfType $withVersion 'Microsoft.Resources/tags')[0].After["properties"]["tags"]
+            $tags["customerTag"].Value | Should -Be "keep"
+        }
+
+        It "Does not add the deletion order, input id or custom tags to a customer-owned group" {
+            $tags = (Get-ChangesOfType $withVersion 'Microsoft.Resources/tags')[0].After["properties"]["tags"]
+            $tags["SplunkDMDeletionOrder"] | Should -BeNullOrEmpty
+            $tags["SplunkDMInputId"] | Should -BeNullOrEmpty
+            $tags["tagKey"] | Should -BeNullOrEmpty
+        }
+
+        It "Still applies custom tags to the resources inside the group" {
+            $eventhubNamespaces = Get-ChangesOfType $withVersion 'Microsoft.EventHub/namespaces'
+            $eventhubNamespaces.Count | Should -Be 1
+            $eventhubNamespaces[0].After["tags"]["tagKey"].Value | Should -Be "tagValue"
+        }
+    }
+
+    Context "Existing resource group without version tag supplied" {
+        It "Does not touch the group tags at all" {
+            $withoutVersion.Status | Should -Be 'Succeeded'
+            (Get-ChangesOfType $withoutVersion 'Microsoft.Resources/tags').Count | Should -Be 0
+            (Get-GroupWriteChanges $withoutVersion).Count | Should -Be 0
+        }
+    }
+}

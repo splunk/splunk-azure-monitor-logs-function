@@ -79,6 +79,7 @@ If a new category's record doesn't contain any of these, it still reaches Splunk
 - Stub `axios.create()` and the returned client's `post` method rather than hitting real HTTP — see the pattern at the top of `azureFunction.test.ts`.
 - When changing timeout, batching, or retry math, update the corresponding hand-computed expected value in the test (tests intentionally re-derive the formula rather than importing the constants, so a formula change requires a matching test edit).
 - ARM templates use a **separate** test framework: PowerShell Pester, driven by `Test-ARMTemplates.ps1` and per-stack `deploy/<stack>/tests/Test-Deployment.Tests.ps1`. These require an authenticated Azure context (`Connect-AzAccount`) and are not run by `npm test`.
+
 - Every function change needs a matching unit test. Every ARM template change needs a matching or updated Pester test in the same `deploy/<stack>/tests/` folder.
 
 ## ARM Templates & Deployment Scripts
@@ -88,6 +89,7 @@ If a new category's record doesn't contain any of these, it still reaches Splunk
 - All PowerShell scripts carry a `<#PSScriptInfo#>` block (version, GUID, author, license, project URI) and a `.SYNOPSIS`/`.PARAMETER`/`.EXAMPLE` comment-based help block. Preserve this structure and keep `.EXAMPLE` accurate when changing parameters.
 - Resource groups and diagnostic settings are named deterministically from the SCDM input ID (e.g. `SplunkDMDataIngest-$SCDMInputId-$region`, `splunk-activity-logs-$SCDMInputId`). Never change this naming convention without accounting for existing customer deployments — it is how the scripts find and update/delete prior resources idempotently.
 - `Test-ARMTemplates.ps1` downloads and uses `arm-ttk` (Azure Resource Manager Template Toolkit) for validation, with `apiVersions-Should-Be-Recent` and `apiVersions-Should-Be-Recent-In-Reference-Functions` explicitly skipped (documented reason: patch releases can't always bump 2-year-old API versions). Keep this skip list in mind — it is intentional, not a gap to "fix" opportunistically.
+- **Existing resource group tagging (`existingResourceGroupName`)**: when it is non-empty, the `Microsoft.Resources/resourceGroups` resource is skipped on purpose (a PUT would fail on a location mismatch and replace the customer's tag set). Data Manager reads the `SplunkInputARMVersion` tag from the *group*, and tags on nested resources do not propagate to it, so both templates instead declare a conditional `Microsoft.Resources/tags` (`default`) resource inside the inner deployment. It writes `union(resourceGroup().tags, existingResourceGroupTags)`, where `existingResourceGroupTags` (computed in the outer template) contains only `SplunkInputARMVersion`, taken from `resourceTags` when present (empty otherwise, which skips the resource entirely). This is deliberately the minimal write to a customer-owned group: no `SplunkDMDeletionOrder` (deletion tooling may read it), no `SplunkDMInputId` (last-writer-wins if several inputs share a group, and nothing reads it on the group), and none of the user's other `resourceTags` (those still go on the nested resources). `Microsoft.Resources/tags` replaces the whole tag set on every deployment, so the explicit merge with `resourceGroup().tags` must stay (guarded with `contains(resourceGroup(), 'tags')` for tagless groups). Tags are only ever added or overwritten, never removed. The version value is never hardcoded in the template; it must match the template version constant that Splunk Cloud Data Manager (SCDM) checks against. Keep the AAD and Activity templates in parity, and keep the matching "Existing Resource Group Tag Tests" Describe block in each stack's Pester file (it creates and removes a scratch resource group, so it needs `Connect-AzAccount`).
 - Diagnostic settings API versions were recently bumped (`2021-05-01-preview`, see git history) — when touching diagnostic settings resources in ARM templates, check the current API version is still valid rather than assuming the existing value.
 
 ## FOSSA / Dependency Findings
@@ -128,6 +130,7 @@ See [`README.md`](README.md) for full setup and detail.
 - `npm run package` — zip the built function for deployment (used by CI; requires a prior `build` + `prune --production`)
 - `npm run get-version` — print `package.json` version (used by CI to name artifacts)
 - ARM template tests (PowerShell, requires `Connect-AzAccount` and the `Pester`/`Az` modules):
+
   ```powershell
   Import-Module ./Test-ARMTemplates.ps1
   Test-ARMTemplates -TemplateFolder ./deploy -UnitTest

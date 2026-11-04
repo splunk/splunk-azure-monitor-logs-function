@@ -61,7 +61,9 @@
     "resourceGroupName": "[if(equals(parameters('existingResourceGroupName'), ''), concat('SplunkDMDataIngest-', parameters('scdmInputId')), parameters('existingResourceGroupName'))]",
     "resourceDeployment": "[concat('SplunkDMDataIngest-', parameters('scdmInputId'))]",
     "scdmInputTag": { "SplunkDMInputId": "[parameters('scdmInputId')]" },
-    "allResourceTags": "[union(variables('scdmInputTag'), parameters('resourceTags'))]"
+    "allResourceTags": "[union(variables('scdmInputTag'), parameters('resourceTags'))]",
+    "armVersionTag": "[if(contains(parameters('resourceTags'), 'SplunkInputARMVersion'), createObject('SplunkInputARMVersion', parameters('resourceTags')['SplunkInputARMVersion']), createObject())]",
+    "existingResourceGroupTags": "[if(equals(parameters('existingResourceGroupName'), ''), createObject(), variables('armVersionTag'))]"
   },
   "resources": [
     {
@@ -129,6 +131,9 @@
           },
           "serverfarmsSKU": {
             "value": "[parameters('serverfarmsSKU')]"
+          },
+          "existingResourceGroupTags": {
+            "value": "[variables('existingResourceGroupTags')]"
           }
         },
         "template": {
@@ -176,6 +181,9 @@
             },
             "serverfarmsSKU": {
               "type": "string"
+            },
+            "existingResourceGroupTags": {
+              "type": "object"
             }
           },
           "variables": {
@@ -192,6 +200,15 @@
             "jobsStorageAccountName": "[if(equals(parameters('altJobsStorageName'), ''), concat('splkjobstr', uniqueString(parameters('scdmInputId'))), parameters('altJobsStorageName'))]"
           },
           "resources": [
+            {
+              "type": "Microsoft.Resources/tags",
+              "apiVersion": "2021-04-01",
+              "name": "default",
+              "condition": "[not(empty(parameters('existingResourceGroupTags')))]",
+              "properties": {
+                "tags": "[union(if(contains(resourceGroup(), 'tags'), resourceGroup().tags, createObject()), parameters('existingResourceGroupTags'))]"
+              }
+            },
             {
               "name": "[parameters('scdmInputId')]",
               "type": "Microsoft.Authorization/roleDefinitions",
