@@ -316,14 +316,14 @@ Describe "Azure ARM Template Existing Resource Group Tag Tests" {
     }
 
     Context "Template structure" {
-        It "Declares the group tags resource in the outer template, not the nested deployment" {
+        It "Declares the group tags resource in its own deployment, not in the main nested deployment" {
             $template = Get-Content -Raw -Path $TemplateFile | ConvertFrom-Json
-            $tagsResource = @($template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/tags' })
-            $tagsResource.Count | Should -Be 1
-            $tagsResource[0].scope | Should -Match "^\[concat\('Microsoft\.Resources/resourceGroups/'"
-            $tagsResource[0].scope | Should -Not -Match '/subscriptions/|subscriptionResourceId|resourceGroupId|resourceId\('
-            $nested = $template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/deployments' }
-            @($nested.properties.template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/tags' }).Count | Should -Be 0
+            @($template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/tags' }).Count | Should -Be 0
+            $main = $template.resources | Where-Object { $_.name -eq "[variables('resourceDeployment')]" }
+            @($main.properties.template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/tags' }).Count | Should -Be 0
+            $tagsDeployment = @($template.resources | Where-Object { $_.name -eq "[variables('groupTagsDeployment')]" })
+            $tagsDeployment.Count | Should -Be 1
+            @($tagsDeployment[0].properties.template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/tags' }).Count | Should -Be 1
         }
     }
 
