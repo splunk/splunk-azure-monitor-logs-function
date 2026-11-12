@@ -354,7 +354,7 @@ function extractResourceType(resourceId: string, delimiter: string): string {
 function getSource(): string {
   const fqns = process.env.EventHubConnection__fullyQualifiedNamespace;
   const namespace = fqns
-    ? fqns.replace('.servicebus.windows.net', '')
+    ? fqns.replace('.servicebus.windows.net', '').replace('.servicebus.usgovcloudapi.net', '')
     : extractNamespaceFromConnectionString(process.env.EventHubConnection ?? '');
 
   const region = process.env.Region ?? 'unknown-region'
@@ -371,7 +371,6 @@ function getSource(): string {
  * @param connectionString the Event Hub connection string.
  */
 function extractNamespaceFromConnectionString(connectionString: string): string {
-  const suffix = '.servicebus.windows.net';
   const endpointPrefix = 'Endpoint=sb://';
   const endpointIndex = connectionString.indexOf(endpointPrefix);
   if (endpointIndex === -1) {
@@ -379,7 +378,10 @@ function extractNamespaceFromConnectionString(connectionString: string): string 
   }
 
   const afterEndpoint = connectionString.substring(endpointIndex + endpointPrefix.length);
-  const suffixIndex = afterEndpoint.indexOf(suffix);
+  let suffixIndex = afterEndpoint.indexOf('.servicebus.windows.net');
+  if (suffixIndex === -1) {
+    suffixIndex = afterEndpoint.indexOf('.servicebus.usgovcloudapi.net');
+  }
   if (suffixIndex === -1) {
     return 'unknown-namespace';
   }

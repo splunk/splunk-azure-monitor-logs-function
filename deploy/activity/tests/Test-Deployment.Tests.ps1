@@ -22,6 +22,32 @@ Param(
 )
 
 
+Describe "Azure Environment Endpoint Configuration" -Tag "Offline" {
+    BeforeAll {
+        $template = Get-Content -Raw $TemplateFile | ConvertFrom-Json -AsHashtable
+        $deployment = $template.resources | Where-Object { $_.type -eq 'Microsoft.Resources/deployments' }
+        $function = $deployment.properties.template.resources | Where-Object { $_.type -eq 'Microsoft.Web/sites' }
+        $settings = @{}
+        foreach ($setting in $function.properties.siteConfig.appSettings) {
+            $settings[$setting.name] = $setting.value
+        }
+    }
+
+    It "Uses the deployed Event Hub namespace endpoint" {
+        $namespace = $settings['EventHubConnection__fullyQualifiedNamespace']
+        $namespace | Should -Match ([regex]::Escape("reference(resourceId('Microsoft.EventHub/namespaces'"))
+        $namespace | Should -Match ([regex]::Escape('.serviceBusEndpoint'))
+        $namespace | Should -Not -Match 'servicebus\.windows\.net'
+    }
+
+    It "Uses the deployment cloud for Function and failed-event Storage" {
+        foreach ($setting in @('AzureWebJobsStorage', 'FailedEventsStorageConnection')) {
+            $settings[$setting] | Should -Match ';EndpointSuffix='
+            $settings[$setting] | Should -Match ([regex]::Escape('environment().suffixes.storage'))
+        }
+    }
+}
+
 Describe "Azure ARM Template Unit Tests" {
     BeforeAll {
         $resourcePrefix = 'SplunkDMDataIngest-'
