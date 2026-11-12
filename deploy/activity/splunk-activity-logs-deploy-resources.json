@@ -649,7 +649,7 @@
                           'DefaultEndpointsProtocol=https;AccountName=',
                           variables('jobsStorageAccountName'),
                           ';AccountKey=',
-                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName')), '2021-04-01').keys[0].value)]"
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('jobsStorageAccountName')), '2021-04-01').keys[0].value, ';EndpointSuffix=', environment().suffixes.storage)]"
                     },
                     {
                       "name": "ConsumerGroupName",
@@ -665,7 +665,7 @@
                     },
                     {
                       "name": "EventHubConnection__fullyQualifiedNamespace",
-                      "value": "[concat(variables('eventHubNamespaceName'), '.servicebus.windows.net')]"
+                      "value": "[split(split(reference(resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName')), '2022-01-01-preview').serviceBusEndpoint, '/')[2], ':')[0]]"
                     },
                     {
                       "name": "FailedEventsStorageConnection",
@@ -673,7 +673,7 @@
                           'DefaultEndpointsProtocol=https;AccountName=',
                           variables('backupStorageAccountName'),
                           ';AccountKey=',
-                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName')), '2021-04-01').keys[0].value)]"
+                          listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('backupStorageAccountName')), '2021-04-01').keys[0].value, ';EndpointSuffix=', environment().suffixes.storage)]"
                     },
                     {
                       "name": "HecUrl",
