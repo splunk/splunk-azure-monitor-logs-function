@@ -7,6 +7,8 @@ This repository also includes
 - ARM templates to deploy the required Azure resources, including the Azure Function, that send logs to Splunk for the Splunk Cloud Data Manager application
 - PowerShell scripts that enable diagnostic settings on Azure resources
 
+The AAD and Activity templates derive the Event Hub hostname from the deployed namespace and the Storage connection-string suffix from the Azure environment. Function source metadata accepts both Public and Government Event Hub namespaces. Government deployment and ingestion still require qualification in the target environment; these changes do not publish a new Function package.
+
 ## Set up the Dev Environment
 
 Ideally, you should be setting up this repository during [the onboarding process](https://splunk.atlassian.net/wiki/spaces/PROD/pages/1078171273052/Engineer+Onboarding+-+Azure+Push-based) for full context:

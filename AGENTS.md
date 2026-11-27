@@ -143,6 +143,8 @@ See [`README.md`](README.md) for full setup and detail.
 
 ### ARM templates / deployment scripts (`deploy/`)
 
+- Preserve cloud-derived endpoints: the Event Hub hostname comes from the namespace's `serviceBusEndpoint`, and Storage connection strings use `environment().suffixes.storage`. Keep Public and Government source-metadata parsing covered by the Function tests.
+
 - Identify which of the two stacks (`aad`, `activity`) the change belongs to before editing — they are independent and should not be merged or cross-referenced.
 - `deploy/resource/` was removed (dead code, see Repo Map above) — flag this to the user if a task seems to target it, rather than recreating it.
 - Run `Test-ARMTemplates.ps1` locally against the affected stack before pushing; CI's `arm-validate` job will otherwise be the first signal.

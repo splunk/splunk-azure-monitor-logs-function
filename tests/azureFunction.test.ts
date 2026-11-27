@@ -167,6 +167,24 @@ describe('Azure Monitor Logs Process', function () {
       expect(actualPayload.source).to.equal('azure:mock_region:Legacy-Namespace:mock-eh-name');
     });
 
+    for (const [namespace, expectedNamespace] of [
+      ['Gov-Namespace.servicebus.usgovcloudapi.net', 'Gov-Namespace'],
+      [undefined, 'Legacy-Gov-Namespace'],
+    ]) {
+      it(`should preserve Government source metadata for ${expectedNamespace}`, async () => {
+        httpClientStub.returns(clientInstance);
+        postStub.resolves({ status: 200 });
+        sandbox.stub(process.env, 'EventHubConnection__fullyQualifiedNamespace').value(namespace);
+        sandbox.stub(process.env, 'EventHubConnection').value('Endpoint=sb://Legacy-Gov-Namespace.servicebus.usgovcloudapi.net/;SharedAccessKeyName=Listen;SharedAccessKey=test');
+
+        await azureMonitorLogsProcessorFunc(splunkContext, [{ records: [{ ...validRecord }] }]);
+
+        const actualPayload = JSON.parse((await ungzip(postStub.firstCall.args[1])).toString());
+        expect(actualPayload.source).to.equal(`azure:mock_region:${expectedNamespace}:mock-eh-name`);
+        expect(actualPayload.event).to.deep.equal(validRecord);
+      });
+    }
+
     it('should make correct POST request with azure resource logs input', async () => {
       httpClientStub.returns(clientInstance);
       postStub.resolves({ status: 200 });
